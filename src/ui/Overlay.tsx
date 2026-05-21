@@ -120,6 +120,14 @@ export function Overlay({ audio }: Props) {
         >
           {audio.playing ? <PauseGlyph /> : <PlayGlyph />}
         </button>
+        <button
+          className={styles.shuffle}
+          onClick={audio.randomizeAll}
+          aria-label="Shuffle"
+          title="Shuffle"
+        >
+          <ShuffleGlyph />
+        </button>
       </div>
 
       <div className={styles.panelHandle} onMouseEnter={() => setPanelOpen(true)} aria-hidden />
@@ -348,6 +356,15 @@ function ChevronGlyph({ open }: { open: boolean }) {
   return (
     <svg className={`${styles.chevronGlyph} ${open ? styles.chevronOpen : ''}`} viewBox="0 0 10 10" aria-hidden>
       <path d="M2 4 L5 7 L8 4" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function ShuffleGlyph() {
+  return (
+    <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden>
+      <path d="M2 4h2.5l3.2 3.5M2 12h2.5l3.2-3.5M9 12h3v-2l2 3-2 3v-2H9M9 4h3V2l2 3-2 3V6H9"
+            fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

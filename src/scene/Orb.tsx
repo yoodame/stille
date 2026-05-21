@@ -13,13 +13,16 @@ type Props = {
   hitBellRef: React.RefObject<number>;
   hitPluckRef: React.RefObject<number>;
   hitDrumRef: React.RefObject<number>;
+  mouseSmoothed: React.RefObject<{ x: number; y: number }>;
   stateRef: React.RefObject<SceneState>;
 };
+
+const BASE_SCALE = 0.7;
 
 export function Orb({
   bassRef, midRef, trebleRef, beatPulseRef,
   hitBellRef, hitPluckRef, hitDrumRef,
-  stateRef,
+  mouseSmoothed, stateRef,
 }: Props) {
   const meshRef = useRef<THREE.Mesh>(null);
   const matRef = useRef<THREE.ShaderMaterial>(null);
@@ -61,7 +64,7 @@ export function Orb({
     u.uNoiseAmount.value = p.noise.volume;
     u.uPadAmount.value = p.pad.volume;
 
-    // Smoothly lerp palette toward current scene
+    // Palette lerp
     const pal = SCENE_BY_ID[stateRef.current.sceneId].palette;
     const rate = 1 - Math.exp(-dt * 0.7);
     (u.uWarm.value as THREE.Vector3).lerp(tmp.set(...pal.warm), rate);
@@ -69,12 +72,20 @@ export function Orb({
     (u.uAccent.value as THREE.Vector3).lerp(tmp.set(...pal.accent), rate);
 
     // Spin: base + drum hits subtly speed it up briefly.
-    meshRef.current.rotation.y += dt * (0.06 + hitDrumRef.current * 0.6);
+    meshRef.current.rotation.y += dt * (0.06 + hitDrumRef.current * 0.7);
     meshRef.current.rotation.x = Math.sin(u.uTime.value * 0.12) * 0.08;
+
+    // Subtle scale pulse on drum hits, plus a faint puff on pluck.
+    const scale = BASE_SCALE * (1 + hitDrumRef.current * 0.05 + hitPluckRef.current * 0.02);
+    meshRef.current.scale.setScalar(scale);
+
+    // Anti-magnetic: shift opposite of mouse direction
+    meshRef.current.position.x = -mouseSmoothed.current.x * 0.30;
+    meshRef.current.position.y = -mouseSmoothed.current.y * 0.24;
   });
 
   return (
-    <mesh ref={meshRef} scale={0.7}>
+    <mesh ref={meshRef}>
       <sphereGeometry args={[1, 96, 64]} />
       <shaderMaterial
         ref={matRef}

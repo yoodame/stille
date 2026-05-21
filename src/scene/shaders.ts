@@ -72,14 +72,14 @@ void main() {
   float n = snoise(pos * baseFreq + vec3(0.0, uTime * 0.14, 0.0));
 
   // Base shape: slow time-driven breathing. Transient hits (bell/pluck/drum)
-  // add gentle bumps — bells ring slowly, plucks pop short, drums punch briefest.
+  // add bumps — bells ring slowly, plucks pop short, drums punch briefest.
   float breath = sin(uTime * 0.55) * 0.5 + 0.5;            // ~0.09 Hz, one breath ≈ 11s
   float amp =
       0.020
     + breath * 0.010
-    + uHitBell  * 0.008
-    + uHitPluck * 0.012
-    + uHitDrum  * 0.016;
+    + uHitBell  * 0.016
+    + uHitPluck * 0.024
+    + uHitDrum  * 0.032;
   float displacement = n * amp;
   pos += normal * displacement;
   vDisp = displacement;
@@ -98,6 +98,9 @@ precision highp float;
 uniform float uMid;
 uniform float uTreble;
 uniform float uBeat;
+uniform float uHitBell;
+uniform float uHitPluck;
+uniform float uHitDrum;
 uniform float uPadAmount;
 uniform float uTime;
 uniform vec3 uWarm;
@@ -120,9 +123,10 @@ void main() {
   // Pad volume shifts the whole body warmer
   body = mix(body, body + uWarm * 0.18, uPadAmount * 0.55);
 
-  // Inner pulse driven by scene accent, gently brightens with the beat.
-  // Keep the amplitude small so a fast beat freq doesn't strobe.
-  float pulseStrength = 0.34 + uBeat * 0.18;
+  // Inner pulse driven by scene accent, gently brightens with the beat,
+  // plus a brief flash on transient hits (bell ring / pluck / drum).
+  float hitGlow = uHitBell * 0.20 + uHitPluck * 0.30 + uHitDrum * 0.35;
+  float pulseStrength = 0.34 + uBeat * 0.18 + hitGlow;
   vec3 pulse = uAccent * pulseStrength * (1.0 - fresnel);
 
   // Rim: a soft brightening of the warm + a neutral silver, mixed by mid energy

@@ -4,6 +4,7 @@ import * as THREE from 'three';
 
 type Props = {
   trebleRef: React.RefObject<number>;
+  mouseSmoothed: React.RefObject<{ x: number; y: number }>;
 };
 
 const COUNT = 220;
@@ -17,7 +18,7 @@ type Particle = {
   size: number;
 };
 
-export function Particles({ trebleRef }: Props) {
+export function Particles({ trebleRef, mouseSmoothed }: Props) {
   const meshRef = useRef<THREE.InstancedMesh>(null);
 
   const particles = useMemo<Particle[]>(() => {
@@ -47,15 +48,17 @@ export function Particles({ trebleRef }: Props) {
     if (!meshRef.current) return;
     const dt = Math.min(dtRaw, 1 / 24);
     t.current += dt;
-    // Treble adds a small bit of energy, but keep the floor steady so motion
-    // doesn't visibly stutter when audio bands fluctuate.
     const speedMul = 1 + trebleRef.current * 0.6;
+
+    // Whole field anti-magnetically shifts opposite the cursor (subtle).
+    const shiftX = -mouseSmoothed.current.x * 0.45;
+    const shiftY = -mouseSmoothed.current.y * 0.35;
 
     for (let i = 0; i < particles.length; i++) {
       const p = particles[i];
       const yDrift = ((p.basePos.y + t.current * p.speed * speedMul) % FIELD_HEIGHT) - FIELD_HEIGHT / 2;
       const sway = Math.sin(t.current * 0.4 + p.phase) * 0.12;
-      dummy.position.set(p.basePos.x + sway, yDrift, p.basePos.z);
+      dummy.position.set(p.basePos.x + sway + shiftX, yDrift + shiftY, p.basePos.z);
       dummy.scale.setScalar(p.size);
       dummy.updateMatrix();
       meshRef.current.setMatrixAt(i, dummy.matrix);
