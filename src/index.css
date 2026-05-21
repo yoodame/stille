@@ -1,0 +1,32 @@
+:root {
+  --sand: #f4efe6;
+  --indigo: #131726;
+  --muted: #8a8678;
+  --warm: #d9c9a3;
+  --font:
+    'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui,
+    sans-serif;
+
+  color-scheme: dark;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--indigo);
+  color: var(--sand);
+  font-family: var(--font);
+  overflow: hidden;
+}
+
+* {
+  box-sizing: border-box;
+}
