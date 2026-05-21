@@ -40,9 +40,10 @@ void main() {
   float rPluck = 1.0 - uHitPluck;
   float rDrum  = 1.0 - uHitDrum;
 
-  float aBell  = ring(r, rBell  * 0.95, 0.055) * uHitBell  * 0.40;
-  float aPluck = ring(r, rPluck * 0.75, 0.045) * uHitPluck * 0.55;
-  float aDrum  = ring(r, rDrum  * 0.62, 0.035) * uHitDrum  * 0.75;
+  // Rings are thin and dim — should read as breath, not strobe.
+  float aBell  = ring(r, rBell  * 0.95, 0.035) * uHitBell  * 0.18;
+  float aPluck = ring(r, rPluck * 0.75, 0.028) * uHitPluck * 0.22;
+  float aDrum  = ring(r, rDrum  * 0.62, 0.024) * uHitDrum  * 0.28;
 
   vec3 col = uWarm * aBell + uAccent * aPluck + uAccent * aDrum;
   float a = aBell + aPluck + aDrum;
