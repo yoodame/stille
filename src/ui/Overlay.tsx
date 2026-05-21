@@ -77,6 +77,13 @@ export function Overlay({ audio }: Props) {
     setPresetName('');
   };
 
+  const handleShuffleScene = () => {
+    const others = SCENES.filter((s) => s.id !== audio.sceneId);
+    if (others.length === 0) return;
+    const pick = others[Math.floor(Math.random() * others.length)];
+    audio.setScene(pick.id);
+  };
+
   return (
     <div className={styles.root}>
       <div className={styles.brand}>
@@ -121,9 +128,9 @@ export function Overlay({ audio }: Props) {
         </button>
         <button
           className={styles.shuffle}
-          onClick={audio.randomizeAll}
-          aria-label="Shuffle"
-          title="Shuffle"
+          onClick={handleShuffleScene}
+          aria-label="Shuffle scene"
+          title="Shuffle scene"
         >
           <ShuffleGlyph />
         </button>
@@ -170,8 +177,12 @@ export function Overlay({ audio }: Props) {
             />
             <span className={styles.globalValue}>{audio.params.drift.intervalSec}s</span>
           </div>
-          <button className={styles.randomizeBtn} onClick={audio.randomizeAll}>
-            randomize unlocked
+          <button
+            className={styles.randomizeBtn}
+            onClick={audio.randomizeAll}
+            title="Re-roll unlocked voices within the current scene"
+          >
+            reroll mix
           </button>
         </div>
 
