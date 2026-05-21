@@ -645,97 +645,238 @@ export class AudioEngine {
 
   private kick(time: number, kit: DrumKit) {
     this.hits.drum = 1;
-    const osc = this.ctx.createOscillator();
-    const amp = this.ctx.createGain();
-    osc.connect(amp);
-    amp.connect(this.drumPanner);
+    if (kit === 'electronic') this.kickElectronic(time);
+    else if (kit === 'tribal') this.kickTribal(time);
+    else this.kickLofi(time);
+  }
 
-    if (kit === 'electronic') {
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(150, time);
-      osc.frequency.exponentialRampToValueAtTime(45, time + 0.12);
-      amp.gain.setValueAtTime(0, time);
-      amp.gain.linearRampToValueAtTime(0.85, time + 0.002);
-      amp.gain.exponentialRampToValueAtTime(0.0001, time + 0.25);
-    } else if (kit === 'tribal') {
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(85, time);
-      osc.frequency.exponentialRampToValueAtTime(55, time + 0.4);
-      amp.gain.setValueAtTime(0, time);
-      amp.gain.linearRampToValueAtTime(0.7, time + 0.012);
-      amp.gain.exponentialRampToValueAtTime(0.0001, time + 0.55);
-    } else { // lofi
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(110, time);
-      osc.frequency.exponentialRampToValueAtTime(38, time + 0.18);
-      amp.gain.setValueAtTime(0, time);
-      amp.gain.linearRampToValueAtTime(0.7, time + 0.005);
-      amp.gain.exponentialRampToValueAtTime(0.0001, time + 0.35);
+  /** Lo-fi: warm sub-kick + a faint tape "click" for character. */
+  private kickLofi(time: number) {
+    const sub = this.ctx.createOscillator();
+    sub.type = 'sine';
+    sub.frequency.setValueAtTime(100, time);
+    sub.frequency.exponentialRampToValueAtTime(38, time + 0.20);
+    const subAmp = this.ctx.createGain();
+    subAmp.gain.setValueAtTime(0, time);
+    subAmp.gain.linearRampToValueAtTime(0.85, time + 0.007);
+    subAmp.gain.exponentialRampToValueAtTime(0.0001, time + 0.45);
+    sub.connect(subAmp);
+    subAmp.connect(this.drumPanner);
+    sub.start(time);
+    sub.stop(time + 0.5);
+
+    if (this.noiseBuffer) {
+      const click = this.ctx.createBufferSource();
+      click.buffer = this.noiseBuffer;
+      const f = this.ctx.createBiquadFilter();
+      f.type = 'bandpass';
+      f.frequency.value = 320;
+      f.Q.value = 5;
+      const a = this.ctx.createGain();
+      a.gain.setValueAtTime(0.45, time);
+      a.gain.exponentialRampToValueAtTime(0.0001, time + 0.025);
+      click.connect(f); f.connect(a); a.connect(this.drumPanner);
+      click.start(time, Math.random() * (PINK_NOISE_DURATION_S - 0.1));
+      click.stop(time + 0.04);
     }
-    osc.start(time);
-    osc.stop(time + 0.6);
+  }
+
+  /** Tribal: low wooden tom — fundamental + 2x harmonic, long decay. */
+  private kickTribal(time: number) {
+    const body = this.ctx.createOscillator();
+    body.type = 'triangle';
+    body.frequency.setValueAtTime(76, time);
+    body.frequency.exponentialRampToValueAtTime(56, time + 0.5);
+    const harm = this.ctx.createOscillator();
+    harm.type = 'triangle';
+    harm.frequency.setValueAtTime(152, time);
+    harm.frequency.exponentialRampToValueAtTime(115, time + 0.4);
+    const harmGain = this.ctx.createGain();
+    harmGain.gain.value = 0.32;
+    harm.connect(harmGain);
+
+    const amp = this.ctx.createGain();
+    amp.gain.setValueAtTime(0, time);
+    amp.gain.linearRampToValueAtTime(0.78, time + 0.018);
+    amp.gain.exponentialRampToValueAtTime(0.0001, time + 0.75);
+    body.connect(amp); harmGain.connect(amp); amp.connect(this.drumPanner);
+    body.start(time); harm.start(time);
+    body.stop(time + 0.8); harm.stop(time + 0.8);
+  }
+
+  /** Electronic: tight 808-style — fast pitch-drop click + sustained sub. */
+  private kickElectronic(time: number) {
+    const click = this.ctx.createOscillator();
+    click.type = 'sine';
+    click.frequency.setValueAtTime(180, time);
+    click.frequency.exponentialRampToValueAtTime(35, time + 0.045);
+    const clickAmp = this.ctx.createGain();
+    clickAmp.gain.setValueAtTime(0, time);
+    clickAmp.gain.linearRampToValueAtTime(0.85, time + 0.001);
+    clickAmp.gain.exponentialRampToValueAtTime(0.0001, time + 0.08);
+    click.connect(clickAmp); clickAmp.connect(this.drumPanner);
+
+    const sub = this.ctx.createOscillator();
+    sub.type = 'sine';
+    sub.frequency.setValueAtTime(50, time);
+    sub.frequency.exponentialRampToValueAtTime(40, time + 0.3);
+    const subAmp = this.ctx.createGain();
+    subAmp.gain.setValueAtTime(0, time);
+    subAmp.gain.linearRampToValueAtTime(0.62, time + 0.004);
+    subAmp.gain.exponentialRampToValueAtTime(0.0001, time + 0.42);
+    sub.connect(subAmp); subAmp.connect(this.drumPanner);
+
+    click.start(time); sub.start(time);
+    click.stop(time + 0.1); sub.stop(time + 0.5);
   }
 
   private snare(time: number, kit: DrumKit) {
     this.hits.drum = Math.max(this.hits.drum, 0.7);
+    if (kit === 'electronic') this.snareElectronic(time);
+    else if (kit === 'tribal') this.snareTribal(time);
+    else this.snareLofi(time);
+  }
+
+  /** Lo-fi snare — paper-snap: warm bandpass body + 200Hz sine thump. */
+  private snareLofi(time: number) {
+    if (!this.noiseBuffer) return;
+    const body = this.ctx.createBufferSource();
+    body.buffer = this.noiseBuffer;
+    const f = this.ctx.createBiquadFilter();
+    f.type = 'bandpass';
+    f.frequency.value = 1100;
+    f.Q.value = 2.2;
+    const a = this.ctx.createGain();
+    a.gain.setValueAtTime(0, time);
+    a.gain.linearRampToValueAtTime(0.42, time + 0.003);
+    a.gain.exponentialRampToValueAtTime(0.0001, time + 0.14);
+    body.connect(f); f.connect(a); a.connect(this.drumPanner);
+    body.start(time, Math.random() * (PINK_NOISE_DURATION_S - 0.2));
+    body.stop(time + 0.18);
+
+    // Tiny low thump for body
+    const thump = this.ctx.createOscillator();
+    thump.type = 'sine';
+    thump.frequency.setValueAtTime(220, time);
+    thump.frequency.exponentialRampToValueAtTime(110, time + 0.06);
+    const thumpAmp = this.ctx.createGain();
+    thumpAmp.gain.setValueAtTime(0.22, time);
+    thumpAmp.gain.exponentialRampToValueAtTime(0.0001, time + 0.07);
+    thump.connect(thumpAmp); thumpAmp.connect(this.drumPanner);
+    thump.start(time); thump.stop(time + 0.09);
+  }
+
+  /** Tribal: wood clave — narrow high bandpass, very short. */
+  private snareTribal(time: number) {
     if (!this.noiseBuffer) return;
     const source = this.ctx.createBufferSource();
     source.buffer = this.noiseBuffer;
-    const filter = this.ctx.createBiquadFilter();
-    const amp = this.ctx.createGain();
-    source.connect(filter);
-    filter.connect(amp);
-    amp.connect(this.drumPanner);
+    const f = this.ctx.createBiquadFilter();
+    f.type = 'bandpass';
+    f.frequency.value = 1900;
+    f.Q.value = 14;
+    const a = this.ctx.createGain();
+    a.gain.setValueAtTime(0, time);
+    a.gain.linearRampToValueAtTime(0.55, time + 0.001);
+    a.gain.exponentialRampToValueAtTime(0.0001, time + 0.05);
+    source.connect(f); f.connect(a); a.connect(this.drumPanner);
+    source.start(time, Math.random() * (PINK_NOISE_DURATION_S - 0.1));
+    source.stop(time + 0.06);
+  }
 
-    if (kit === 'electronic') {
-      filter.type = 'highpass';
-      filter.frequency.value = 1800;
-      amp.gain.setValueAtTime(0, time);
-      amp.gain.linearRampToValueAtTime(0.5, time + 0.001);
-      amp.gain.exponentialRampToValueAtTime(0.0001, time + 0.18);
-    } else if (kit === 'tribal') {
-      filter.type = 'bandpass';
-      filter.frequency.value = 800;
-      filter.Q.value = 6;
-      amp.gain.setValueAtTime(0, time);
-      amp.gain.linearRampToValueAtTime(0.45, time + 0.002);
-      amp.gain.exponentialRampToValueAtTime(0.0001, time + 0.1);
-    } else { // lofi — soft paper-snap
-      filter.type = 'bandpass';
-      filter.frequency.value = 1400;
-      filter.Q.value = 3.5;
-      amp.gain.setValueAtTime(0, time);
-      amp.gain.linearRampToValueAtTime(0.35, time + 0.003);
-      amp.gain.exponentialRampToValueAtTime(0.0001, time + 0.12);
+  /** Electronic: hand-clap — short HP noise burst with bright tail. */
+  private snareElectronic(time: number) {
+    if (!this.noiseBuffer) return;
+    // 3 quick noise micro-hits + tail (the "clap" feel)
+    for (const offset of [0, 0.012, 0.022]) {
+      const src = this.ctx.createBufferSource();
+      src.buffer = this.noiseBuffer;
+      const f = this.ctx.createBiquadFilter();
+      f.type = 'highpass';
+      f.frequency.value = 1500;
+      const a = this.ctx.createGain();
+      const t = time + offset;
+      a.gain.setValueAtTime(0, t);
+      a.gain.linearRampToValueAtTime(0.38, t + 0.001);
+      a.gain.exponentialRampToValueAtTime(0.0001, t + 0.035);
+      src.connect(f); f.connect(a); a.connect(this.drumPanner);
+      src.start(t, Math.random() * (PINK_NOISE_DURATION_S - 0.1));
+      src.stop(t + 0.04);
     }
-    source.start(time, Math.random() * (PINK_NOISE_DURATION_S - 0.3));
-    source.stop(time + 0.25);
+    // Bright tail for sustain
+    const tail = this.ctx.createBufferSource();
+    tail.buffer = this.noiseBuffer;
+    const tailFilter = this.ctx.createBiquadFilter();
+    tailFilter.type = 'highpass';
+    tailFilter.frequency.value = 2400;
+    const tailAmp = this.ctx.createGain();
+    tailAmp.gain.setValueAtTime(0, time + 0.022);
+    tailAmp.gain.linearRampToValueAtTime(0.18, time + 0.025);
+    tailAmp.gain.exponentialRampToValueAtTime(0.0001, time + 0.15);
+    tail.connect(tailFilter); tailFilter.connect(tailAmp); tailAmp.connect(this.drumPanner);
+    tail.start(time + 0.022, Math.random() * (PINK_NOISE_DURATION_S - 0.2));
+    tail.stop(time + 0.18);
   }
 
   private hat(time: number, vol: number, kit: DrumKit) {
     if (!this.noiseBuffer) return;
+    if (kit === 'electronic') return this.hatElectronic(time, vol);
+    if (kit === 'tribal') return this.hatTribal(time, vol);
+    this.hatLofi(time, vol);
+  }
+
+  /** Lo-fi: brushed warm — softer attack, slight body. */
+  private hatLofi(time: number, vol: number) {
+    if (!this.noiseBuffer) return;
     const source = this.ctx.createBufferSource();
     source.buffer = this.noiseBuffer;
-    const filter = this.ctx.createBiquadFilter();
-    const amp = this.ctx.createGain();
-    source.connect(filter);
-    filter.connect(amp);
-    amp.connect(this.drumPanner);
-
-    let cutoff = 7500;
-    let dur = 0.06;
-    if (kit === 'electronic') { cutoff = 9000; dur = 0.04; }
-    else if (kit === 'tribal') { cutoff = 4500; dur = 0.12; } // shaker-like
-    filter.type = 'highpass';
-    filter.frequency.value = cutoff;
-    filter.Q.value = 0.8;
-
-    amp.gain.setValueAtTime(0, time);
-    amp.gain.linearRampToValueAtTime(vol * 0.28, time + 0.001);
-    amp.gain.exponentialRampToValueAtTime(0.0001, time + dur);
-
+    const f = this.ctx.createBiquadFilter();
+    f.type = 'highpass';
+    f.frequency.value = 6500;
+    f.Q.value = 0.6;
+    const a = this.ctx.createGain();
+    a.gain.setValueAtTime(0, time);
+    a.gain.linearRampToValueAtTime(vol * 0.26, time + 0.003);
+    a.gain.exponentialRampToValueAtTime(0.0001, time + 0.09);
+    source.connect(f); f.connect(a); a.connect(this.drumPanner);
     source.start(time, Math.random() * (PINK_NOISE_DURATION_S - 0.2));
-    source.stop(time + dur + 0.02);
+    source.stop(time + 0.11);
+  }
+
+  /** Tribal: shaker — mid bandpass, longer body. */
+  private hatTribal(time: number, vol: number) {
+    if (!this.noiseBuffer) return;
+    const source = this.ctx.createBufferSource();
+    source.buffer = this.noiseBuffer;
+    const f = this.ctx.createBiquadFilter();
+    f.type = 'bandpass';
+    f.frequency.value = 3600;
+    f.Q.value = 2.2;
+    const a = this.ctx.createGain();
+    a.gain.setValueAtTime(0, time);
+    a.gain.linearRampToValueAtTime(vol * 0.34, time + 0.006);
+    a.gain.exponentialRampToValueAtTime(0.0001, time + 0.18);
+    source.connect(f); f.connect(a); a.connect(this.drumPanner);
+    source.start(time, Math.random() * (PINK_NOISE_DURATION_S - 0.3));
+    source.stop(time + 0.2);
+  }
+
+  /** Electronic: closed hi-hat — tight, very bright, very short. */
+  private hatElectronic(time: number, vol: number) {
+    if (!this.noiseBuffer) return;
+    const source = this.ctx.createBufferSource();
+    source.buffer = this.noiseBuffer;
+    const f = this.ctx.createBiquadFilter();
+    f.type = 'highpass';
+    f.frequency.value = 9000;
+    f.Q.value = 1.1;
+    const a = this.ctx.createGain();
+    a.gain.setValueAtTime(0, time);
+    a.gain.linearRampToValueAtTime(vol * 0.30, time + 0.0005);
+    a.gain.exponentialRampToValueAtTime(0.0001, time + 0.028);
+    source.connect(f); f.connect(a); a.connect(this.drumPanner);
+    source.start(time, Math.random() * (PINK_NOISE_DURATION_S - 0.1));
+    source.stop(time + 0.04);
   }
 
   // ===== Drift =====
