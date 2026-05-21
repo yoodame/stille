@@ -155,6 +155,8 @@ export class AudioEngine {
   private drumTimer: number | null = null;
   private drumNextBeatTime = 0;
   private drumStepIndex = 0;
+  /** Loaded drum samples, indexed by [kit][piece]. Undefined entries fall back to synthesis. */
+  private drumBuffers: Partial<Record<DrumKit, Partial<Record<'kick' | 'snare' | 'hat', AudioBuffer>>>> = {};
 
   // Melodic sub-bass scheduler
   private subBassTimer: number | null = null;
@@ -247,6 +249,43 @@ export class AudioEngine {
 
     // Apply initial params to gains/filters
     this.applyAll();
+
+    // Load drum samples in the background — synthesis fallback if any fail.
+    void this.loadDrumSamples();
+  }
+
+  private async loadDrumSamples() {
+    const base = (typeof document !== 'undefined' && document.baseURI) || '/';
+    const kits: DrumKit[] = ['lofi', 'tribal', 'electronic'];
+    const pieces: Array<'kick' | 'snare' | 'hat'> = ['kick', 'snare', 'hat'];
+
+    await Promise.all(
+      kits.flatMap((kit) =>
+        pieces.map(async (piece) => {
+          try {
+            const url = new URL(`samples/${kit}/${piece}.mp3`, base).toString();
+            const res = await fetch(url);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const buf = await res.arrayBuffer();
+            const audio = await this.ctx.decodeAudioData(buf);
+            (this.drumBuffers[kit] ??= {})[piece] = audio;
+          } catch (err) {
+            // Synthesis fallback handles the absent sample silently.
+            console.warn(`stille: failed to load sample ${kit}/${piece}`, err);
+          }
+        }),
+      ),
+    );
+  }
+
+  private playSample(buffer: AudioBuffer, time: number, gain: number) {
+    const source = this.ctx.createBufferSource();
+    source.buffer = buffer;
+    const g = this.ctx.createGain();
+    g.gain.value = gain;
+    source.connect(g);
+    g.connect(this.drumPanner);
+    source.start(time);
   }
 
   async start(): Promise<void> {
@@ -696,6 +735,12 @@ export class AudioEngine {
 
   private kick(time: number, kit: DrumKit) {
     this.hits.drum = 1;
+    const buf = this.drumBuffers[kit]?.kick;
+    if (buf) {
+      this.playSample(buf, time, 0.9);
+      return;
+    }
+    // Synthesis fallback
     if (kit === 'electronic') this.kickElectronic(time);
     else if (kit === 'tribal') this.kickTribal(time);
     else this.kickLofi(time);
@@ -783,6 +828,12 @@ export class AudioEngine {
 
   private snare(time: number, kit: DrumKit) {
     this.hits.drum = Math.max(this.hits.drum, 0.7);
+    const buf = this.drumBuffers[kit]?.snare;
+    if (buf) {
+      this.playSample(buf, time, 0.85);
+      return;
+    }
+    // Synthesis fallback
     if (kit === 'electronic') this.snareElectronic(time);
     else if (kit === 'tribal') this.snareTribal(time);
     else this.snareLofi(time);
@@ -870,6 +921,11 @@ export class AudioEngine {
   }
 
   private hat(time: number, vol: number, kit: DrumKit) {
+    const buf = this.drumBuffers[kit]?.hat;
+    if (buf) {
+      this.playSample(buf, time, vol * 0.7);
+      return;
+    }
     if (!this.noiseBuffer) return;
     if (kit === 'electronic') return this.hatElectronic(time, vol);
     if (kit === 'tribal') return this.hatTribal(time, vol);

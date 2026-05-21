@@ -1,0 +1,19 @@
+Drum samples in this directory are sourced from the Tone.js audio
+collection (https://github.com/Tonejs/audio/tree/master/drum-samples),
+which in turn derives them from Chris Wilson's web-audio-samples
+(https://github.com/cwilso/web-audio-samples).
+
+Kits used:
+  lofi/        — CR78    (Roland CR-78 drum machine sounds)
+  tribal/      — Bongos  (hand percussion)
+  electronic/  — Stark   (modern punchy kit)
+
+Each kit's three files map to the engine's piece slots:
+  kick.mp3   → kick voice
+  snare.mp3  → snare/clap voice
+  hat.mp3    → hi-hat voice
+
+The upstream sources do not carry an explicit open-source license.
+They have been broadly used in Web Audio tutorials and examples since
+~2012. If you intend to ship this app commercially, replace these with
+samples you have explicit rights to distribute.
