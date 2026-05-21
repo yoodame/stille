@@ -364,10 +364,18 @@ function ChevronGlyph({ open }: { open: boolean }) {
 }
 
 function ShuffleGlyph() {
+  // lucide: shuffle
   return (
-    <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden>
-      <path d="M2 4h2.5l3.2 3.5M2 12h2.5l3.2-3.5M9 12h3v-2l2 3-2 3v-2H9M9 4h3V2l2 3-2 3V6H9"
-            fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
+    <svg
+      width="15" height="15" viewBox="0 0 24 24"
+      fill="none" stroke="currentColor" strokeWidth="1.5"
+      strokeLinecap="round" strokeLinejoin="round" aria-hidden
+    >
+      <path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.7-1.1 2-1.7 3.3-1.7H22" />
+      <path d="m18 2 4 4-4 4" />
+      <path d="M2 6h1.9c1.5 0 2.9.9 3.6 2.2" />
+      <path d="M22 18h-5.9c-1.3 0-2.6-.7-3.3-1.8l-.5-.8" />
+      <path d="m18 14 4 4-4 4" />
     </svg>
   );
 }
