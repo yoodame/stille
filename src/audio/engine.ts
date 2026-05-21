@@ -263,6 +263,7 @@ export class AudioEngine {
     this.scheduleNextBell();
     this.startDrumScheduler();
     this.scheduleNextPluck();
+    this.scheduleNextBassNote();
     this.scheduleNextDrift();
   }
 
@@ -275,10 +276,10 @@ export class AudioEngine {
     this.master.gain.exponentialRampToValueAtTime(0.0001, now + FADE_S);
 
     this._playing = false;
-    [this.bellTimer, this.drumTimer, this.pluckTimer, this.driftTimer].forEach((t) => {
+    [this.bellTimer, this.drumTimer, this.pluckTimer, this.driftTimer, this.subBassTimer].forEach((t) => {
       if (t !== null) clearTimeout(t);
     });
-    this.bellTimer = this.drumTimer = this.pluckTimer = this.driftTimer = null;
+    this.bellTimer = this.drumTimer = this.pluckTimer = this.driftTimer = this.subBassTimer = null;
     this.lerps = [];
 
     this.stopTimer = window.setTimeout(() => {
@@ -491,10 +492,8 @@ export class AudioEngine {
     const t = this.ctx.currentTime;
     this.subGain.gain.cancelScheduledValues(t);
     this.subGain.gain.linearRampToValueAtTime(p.volume * 0.4, t + 0.1);
-    if (this.subOsc) {
-      this.subOsc.frequency.cancelScheduledValues(t);
-      this.subOsc.frequency.linearRampToValueAtTime(p.freq, t + 0.3);
-    }
+    // Note: sub.frequency is owned by the melodic scheduler so we don't fight it.
+    // User's freq slider takes effect on the next scheduled note (within ~5s).
     if (this.subLfoGain) {
       this.subLfoGain.gain.cancelScheduledValues(t);
       this.subLfoGain.gain.linearRampToValueAtTime(p.modDepth * p.freq * 0.06, t + 0.3);
