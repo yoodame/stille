@@ -121,6 +121,13 @@ export class AudioEngine {
 
   private ctx: AudioContext;
   private master: GainNode;
+  /** Master output node (dry + wet sum) feeding the analyser and destination. */
+  private out: GainNode;
+  /** Dry signal path (master → out). */
+  private dryGain: GainNode;
+  /** Convolution reverb send (master → convolver → wetGain → out). */
+  private convolver: ConvolverNode;
+  private wetGain: GainNode;
   private analyser: AnalyserNode;
   private freqData: Uint8Array<ArrayBuffer>;
 
@@ -192,7 +199,21 @@ export class AudioEngine {
     this.analyser.smoothingTimeConstant = 0.82;
     this.freqData = new Uint8Array(new ArrayBuffer(this.analyser.frequencyBinCount));
 
-    this.master.connect(this.analyser);
+    // Reverb send. Dry/wet sum into `out`, then through analyser to destination.
+    this.out = this.ctx.createGain();
+    this.dryGain = this.ctx.createGain();
+    this.dryGain.gain.value = 1.0;
+    this.wetGain = this.ctx.createGain();
+    this.wetGain.gain.value = 0.22;
+    this.convolver = this.ctx.createConvolver();
+    this.convolver.buffer = this.createReverbImpulse();
+
+    this.master.connect(this.dryGain);
+    this.master.connect(this.convolver);
+    this.convolver.connect(this.wetGain);
+    this.dryGain.connect(this.out);
+    this.wetGain.connect(this.out);
+    this.out.connect(this.analyser);
     this.analyser.connect(this.ctx.destination);
 
     // Binaural chain
@@ -1068,6 +1089,31 @@ export class AudioEngine {
     if (this.lerpFrame !== null) cancelAnimationFrame(this.lerpFrame);
     this.lerpFrame = null;
     this.lerps = [];
+  }
+
+  /** Procedural stereo impulse response — 1.8s of exponentially decaying noise. */
+  private createReverbImpulse(): AudioBuffer {
+    const sampleRate = this.ctx.sampleRate;
+    const length = Math.floor(sampleRate * 1.8);
+    const buffer = this.ctx.createBuffer(2, length, sampleRate);
+    for (let ch = 0; ch < 2; ch++) {
+      const data = buffer.getChannelData(ch);
+      for (let i = 0; i < length; i++) {
+        // Exponential decay with a slight early-reflection hump
+        const t = i / length;
+        const decay = Math.pow(1 - t, 3.2);
+        const noise = (Math.random() * 2 - 1) * decay;
+        data[i] = noise;
+      }
+    }
+    return buffer;
+  }
+
+  /** Public reverb wet level (0-1, default 0.22). */
+  setReverbWet(v: number): void {
+    const now = this.ctx.currentTime;
+    this.wetGain.gain.cancelScheduledValues(now);
+    this.wetGain.gain.linearRampToValueAtTime(v, now + 0.15);
   }
 
   // Voss-McCartney pink noise approximation, 2-channel decorrelated.
