@@ -7,6 +7,36 @@ const FADE_S = 1.5;
 // Diatonic + pentatonic scales over two octaves. Used by bell/pluck.
 const PENTATONIC_BASE = [261.63, 293.66, 329.63, 392.0, 440.0, 523.25, 587.33, 659.25];
 
+// Minor-pentatonic semitone offsets used for the melodic sub-bass — meditative phrasing.
+const BASS_OFFSETS = [0, -3, -5, 0, +2, -7, 0, +5, -3, 0, -5, +2];
+
+// 16-step drum grooves per kit. kick/snare are boolean; hat is a velocity 0..1.
+type DrumPattern = {
+  kick: ReadonlyArray<0 | 1>;
+  snare: ReadonlyArray<0 | 1>;
+  hat: ReadonlyArray<number>;
+};
+const DRUM_PATTERNS: Record<DrumKit, DrumPattern> = {
+  // Boom-bap: kick on 1 + the "and of 2", snare 2 + 4, hat 8ths with quiet ghosts.
+  lofi: {
+    kick:  [1,0,0,0, 0,0,1,0, 0,0,1,0, 0,0,0,0],
+    snare: [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
+    hat:   [1,0.35,1,0.35, 1,0.35,1,0.35, 1,0.35,1,0.35, 1,0.35,1,0.35],
+  },
+  // Polyrhythmic: kick syncopated, clave 3-2 son pattern, shaker every 16th.
+  tribal: {
+    kick:  [1,0,0,0, 0,0,1,0, 0,0,1,0, 0,1,0,0],
+    snare: [1,0,0,0, 0,0,0,1, 0,0,1,0, 0,1,0,0],
+    hat:   [1,0.7,1,0.7, 1,0.7,1,0.7, 1,0.7,1,0.7, 1,0.7,1,0.7],
+  },
+  // Four-on-the-floor: kick every quarter, clap 2 + 4, hat with off-beat accent.
+  electronic: {
+    kick:  [1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0],
+    snare: [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
+    hat:   [1,0,0.55,0, 1,0,0.55,0, 1,0,0.55,0, 1,0,0.55,0],
+  },
+};
+
 export type Params = {
   tempo: number; // BPM, 40-120
   drift: { enabled: boolean; intervalSec: number };
@@ -119,12 +149,16 @@ export class AudioEngine {
   private bellGain: GainNode;
   private bellTimer: number | null = null;
 
-  // Drum
+  // Drum (16-step grooves)
   private drumPanner: StereoPannerNode;
   private drumGain: GainNode;
   private drumTimer: number | null = null;
   private drumNextBeatTime = 0;
-  private drumBeatIndex = 0;
+  private drumStepIndex = 0;
+
+  // Melodic sub-bass scheduler
+  private subBassTimer: number | null = null;
+  private subBassNoteIdx = 0;
 
   // Pluck
   private pluckPanner: StereoPannerNode;
@@ -611,36 +645,54 @@ export class AudioEngine {
 
   private startDrumScheduler() {
     this.drumNextBeatTime = this.ctx.currentTime + 0.1;
-    this.drumBeatIndex = 0;
+    this.drumStepIndex = 0;
     this.tickDrumScheduler();
   }
 
   private tickDrumScheduler = () => {
     if (!this._playing) { this.drumTimer = null; return; }
-    const lookahead = 0.2;
-    const beatDuration = 60 / this.params.tempo;
+    const lookahead = 0.25;
+    const stepDuration = (60 / this.params.tempo) / 4; // 16th note
     const audible = this.params.drums.volume > 0.01;
 
     while (this.drumNextBeatTime < this.ctx.currentTime + lookahead) {
       if (audible) {
-        const beat = this.drumBeatIndex % 4;
-        const swingShift = (beat === 1 || beat === 3) ? this.params.drums.swing * beatDuration * 0.5 : 0;
-        this.scheduleDrumBeat(this.drumNextBeatTime + swingShift, beat, beatDuration);
+        const step = this.drumStepIndex % 16;
+        // Swing pushes odd 16ths (the "and") slightly later for groove.
+        const swingShift = (step % 2 === 1) ? this.params.drums.swing * stepDuration : 0;
+        this.scheduleDrumStep(this.drumNextBeatTime + swingShift, step);
       }
-      this.drumNextBeatTime += beatDuration;
-      this.drumBeatIndex++;
+      this.drumNextBeatTime += stepDuration;
+      this.drumStepIndex++;
     }
-    this.drumTimer = window.setTimeout(this.tickDrumScheduler, 50);
+    this.drumTimer = window.setTimeout(this.tickDrumScheduler, 30);
   };
 
-  private scheduleDrumBeat(time: number, beat: number, beatDuration: number) {
+  private scheduleDrumStep(time: number, step: number) {
     const kit = this.params.drums.kit;
-    if (beat === 0 || beat === 2) this.kick(time, kit);
-    if (beat === 1 || beat === 3) this.snare(time, kit);
-    this.hat(time, beat === 0 || beat === 2 ? 0.55 : 0.35, kit);
-    // Subtle ghost on the offbeat
-    if (beat === 1 && Math.random() < 0.3) this.hat(time + beatDuration * 0.5, 0.25, kit);
+    const pattern = DRUM_PATTERNS[kit];
+    if (pattern.kick[step]) this.kick(time, kit);
+    if (pattern.snare[step]) this.snare(time, kit);
+    const hatVel = pattern.hat[step];
+    if (hatVel > 0) this.hat(time, hatVel, kit);
   }
+
+  // ===== Melodic sub-bass scheduler =====
+
+  private scheduleNextBassNote = () => {
+    if (!this._playing) { this.subBassTimer = null; return; }
+    if (this.params.subBass.volume > 0.01 && this.subOsc) {
+      const offset = BASS_OFFSETS[this.subBassNoteIdx % BASS_OFFSETS.length];
+      this.subBassNoteIdx++;
+      const targetFreq = this.params.subBass.freq * Math.pow(2, offset / 12);
+      const now = this.ctx.currentTime;
+      this.subOsc.frequency.cancelScheduledValues(now);
+      this.subOsc.frequency.linearRampToValueAtTime(targetFreq, now + 1.4);
+    }
+    // 4-7s between notes — meditative phrasing.
+    const interval = 4000 + Math.random() * 3000;
+    this.subBassTimer = window.setTimeout(this.scheduleNextBassNote, interval);
+  };
 
   private kick(time: number, kit: DrumKit) {
     this.hits.drum = 1;
