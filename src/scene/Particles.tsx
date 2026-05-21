@@ -47,7 +47,9 @@ export function Particles({ trebleRef }: Props) {
     if (!meshRef.current) return;
     const dt = Math.min(dtRaw, 1 / 24);
     t.current += dt;
-    const speedMul = 1 + trebleRef.current * 1.4;
+    // Treble adds a small bit of energy, but keep the floor steady so motion
+    // doesn't visibly stutter when audio bands fluctuate.
+    const speedMul = 1 + trebleRef.current * 0.6;
 
     for (let i = 0; i < particles.length; i++) {
       const p = particles[i];

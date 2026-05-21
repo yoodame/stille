@@ -79,7 +79,13 @@ export function Overlay({ audio }: Props) {
 
   return (
     <div className={styles.root}>
-      <div className={styles.wordmark}>stille</div>
+      <div className={styles.brand}>
+        <div className={styles.wordmark}>stille</div>
+        <div className={styles.brandDef}>
+          <div className={styles.defPhonetic}>/ˈstɪlːə/ · Norwegian for stillness</div>
+          <div className={styles.defTagline}>soundscapes for focus, relax, sleep</div>
+        </div>
+      </div>
 
       <div className={styles.scenePicker}>
         <button

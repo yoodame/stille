@@ -68,9 +68,10 @@ void main() {
   float baseFreq = 0.7;
   float n = snoise(pos * baseFreq + vec3(0.0, uTime * 0.14, 0.0));
 
-  // Beat pulse drives breathing. Bass + noise add subtle secondary motion.
-  // Calmer amplitudes — the orb should glide, not flinch.
-  float amp = 0.022 + uBeat * 0.025 + uBass * 0.010 + uNoiseAmount * 0.014;
+  // Shape is purely time-driven — a slow breathing envelope, never audio-reactive.
+  // (Audio drives color and particles, not the silhouette.)
+  float breath = sin(uTime * 0.55) * 0.5 + 0.5;            // ~0.09 Hz, one breath ≈ 11s
+  float amp = 0.020 + breath * 0.010 + uNoiseAmount * 0.006; // user-set noise nudges very gently
   float displacement = n * amp;
   pos += normal * displacement;
   vDisp = displacement;
@@ -111,14 +112,15 @@ void main() {
   // Pad volume shifts the whole body warmer
   body = mix(body, body + uWarm * 0.18, uPadAmount * 0.55);
 
-  // Inner pulse driven by scene accent, brightens with the beat
-  float pulseStrength = 0.30 + uBeat * 0.55;
+  // Inner pulse driven by scene accent, gently brightens with the beat.
+  // Keep the amplitude small so a fast beat freq doesn't strobe.
+  float pulseStrength = 0.34 + uBeat * 0.18;
   vec3 pulse = uAccent * pulseStrength * (1.0 - fresnel);
 
   // Rim: a soft brightening of the warm + a neutral silver, mixed by mid energy
   vec3 silver = vec3(0.90, 0.94, 1.05);
-  vec3 rim = mix(silver, uWarm + vec3(0.15), clamp(uMid * 0.7 + uPadAmount * 0.3, 0.0, 1.0));
-  float rimStrength = 0.55 + uTreble * 0.45;
+  vec3 rim = mix(silver, uWarm + vec3(0.15), clamp(uMid * 0.4 + uPadAmount * 0.3, 0.0, 1.0));
+  float rimStrength = 0.6 + uTreble * 0.22;
   vec3 rimCol = rim * fresnel * rimStrength;
 
   vec3 col = body * 0.55 + pulse + rimCol;
