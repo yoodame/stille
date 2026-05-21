@@ -40,10 +40,11 @@ void main() {
   float rPluck = 1.0 - uHitPluck;
   float rDrum  = 1.0 - uHitDrum;
 
-  // Rings are thin and dim — should read as breath, not strobe.
-  float aBell  = ring(r, rBell  * 0.95, 0.035) * uHitBell  * 0.18;
-  float aPluck = ring(r, rPluck * 0.75, 0.028) * uHitPluck * 0.22;
-  float aDrum  = ring(r, rDrum  * 0.62, 0.024) * uHitDrum  * 0.28;
+  // Tuned to be present but not loud — between the original (too apparent) and
+  // the previous pass (too faint).
+  float aBell  = ring(r, rBell  * 0.95, 0.045) * uHitBell  * 0.28;
+  float aPluck = ring(r, rPluck * 0.75, 0.036) * uHitPluck * 0.36;
+  float aDrum  = ring(r, rDrum  * 0.62, 0.030) * uHitDrum  * 0.48;
 
   vec3 col = uWarm * aBell + uAccent * aPluck + uAccent * aDrum;
   float a = aBell + aPluck + aDrum;
