@@ -254,11 +254,9 @@ function VoiceCard({
   return (
     <div className={`${styles.voice} ${expanded ? styles.voiceOpen : ''}`}>
       <div className={styles.voiceHeader}>
-        <button
-          className={`${styles.lock} ${locked ? styles.locked : ''}`}
-          onClick={(e) => { e.stopPropagation(); audio.setLock(id, !locked); }}
-          aria-label={locked ? 'Unlock' : 'Lock'}
-        />
+        <span className={styles.voiceIcon} aria-hidden>
+          <VoiceIcon id={id} />
+        </span>
         <button className={styles.voiceName} onClick={onToggle}>{name}</button>
         <input
           className={styles.voiceVol}
@@ -269,6 +267,11 @@ function VoiceCard({
           value={vol}
           onChange={(e) => audio.setParam(`${id}.volume`, Number(e.target.value))}
           onClick={(e) => e.stopPropagation()}
+        />
+        <button
+          className={`${styles.lock} ${locked ? styles.locked : ''}`}
+          onClick={(e) => { e.stopPropagation(); audio.setLock(id, !locked); }}
+          aria-label={locked ? 'Unlock' : 'Lock'}
         />
         <button className={styles.chevron} onClick={onToggle} aria-label={expanded ? 'Collapse' : 'Expand'}>
           <ChevronGlyph open={expanded} />
@@ -367,4 +370,74 @@ function ShuffleGlyph() {
             fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
+}
+
+// Lucide-style icons (inlined, stroke-width 1.5 for a lighter feel).
+function VoiceIcon({ id }: { id: VoiceId }) {
+  const common = {
+    width: 16,
+    height: 16,
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: 1.5,
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+    'aria-hidden': true,
+  };
+  switch (id) {
+    case 'binaural':
+      return (
+        <svg {...common}>
+          <path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H4a1 1 0 0 1-1-1v-6Z" />
+          <path d="M21 14h-3a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h2a1 1 0 0 0 1-1v-6Z" />
+          <path d="M3 14a9 9 0 1 1 18 0" />
+        </svg>
+      );
+    case 'noise':
+      return (
+        <svg {...common}>
+          <path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2" />
+          <path d="M9.6 4.6A2 2 0 1 1 11 8H2" />
+          <path d="M12.6 19.4A2 2 0 1 0 14 16H2" />
+        </svg>
+      );
+    case 'pad':
+      return (
+        <svg {...common}>
+          <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z" />
+        </svg>
+      );
+    case 'bells':
+      return (
+        <svg {...common}>
+          <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+          <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+        </svg>
+      );
+    case 'pluck':
+      return (
+        <svg {...common}>
+          <path d="M9 18V5l12-2v13" />
+          <circle cx="6" cy="18" r="3" />
+          <circle cx="18" cy="16" r="3" />
+        </svg>
+      );
+    case 'drums':
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="12" r="10" />
+          <circle cx="12" cy="12" r="5" />
+          <circle cx="12" cy="12" r="1.5" />
+        </svg>
+      );
+    case 'subBass':
+      return (
+        <svg {...common}>
+          <path d="M2 13a2 2 0 0 0 2-2V7a2 2 0 0 1 4 0v13a2 2 0 0 0 4 0V4a2 2 0 0 1 4 0v13a2 2 0 0 0 4 0v-4a2 2 0 0 1 2-2" />
+        </svg>
+      );
+    default:
+      return null;
+  }
 }
