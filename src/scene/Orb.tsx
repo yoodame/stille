@@ -10,10 +10,17 @@ type Props = {
   midRef: React.RefObject<number>;
   trebleRef: React.RefObject<number>;
   beatPulseRef: React.RefObject<number>;
+  hitBellRef: React.RefObject<number>;
+  hitPluckRef: React.RefObject<number>;
+  hitDrumRef: React.RefObject<number>;
   stateRef: React.RefObject<SceneState>;
 };
 
-export function Orb({ bassRef, midRef, trebleRef, beatPulseRef, stateRef }: Props) {
+export function Orb({
+  bassRef, midRef, trebleRef, beatPulseRef,
+  hitBellRef, hitPluckRef, hitDrumRef,
+  stateRef,
+}: Props) {
   const meshRef = useRef<THREE.Mesh>(null);
   const matRef = useRef<THREE.ShaderMaterial>(null);
 
@@ -25,6 +32,9 @@ export function Orb({ bassRef, midRef, trebleRef, beatPulseRef, stateRef }: Prop
       uMid: { value: 0 },
       uTreble: { value: 0 },
       uBeat: { value: 0 },
+      uHitBell:  { value: 0 },
+      uHitPluck: { value: 0 },
+      uHitDrum:  { value: 0 },
       uNoiseAmount: { value: 0.4 },
       uPadAmount: { value: 0.5 },
       uWarm:   { value: new THREE.Vector3(...init.warm) },
@@ -45,6 +55,9 @@ export function Orb({ bassRef, midRef, trebleRef, beatPulseRef, stateRef }: Prop
     u.uMid.value = midRef.current;
     u.uTreble.value = trebleRef.current;
     u.uBeat.value = beatPulseRef.current;
+    u.uHitBell.value  = hitBellRef.current;
+    u.uHitPluck.value = hitPluckRef.current;
+    u.uHitDrum.value  = hitDrumRef.current;
     u.uNoiseAmount.value = p.noise.volume;
     u.uPadAmount.value = p.pad.volume;
 
@@ -55,7 +68,8 @@ export function Orb({ bassRef, midRef, trebleRef, beatPulseRef, stateRef }: Prop
     (u.uCool.value as THREE.Vector3).lerp(tmp.set(...pal.cool), rate);
     (u.uAccent.value as THREE.Vector3).lerp(tmp.set(...pal.accent), rate);
 
-    meshRef.current.rotation.y += dt * 0.06;
+    // Spin: base + drum hits subtly speed it up briefly.
+    meshRef.current.rotation.y += dt * (0.06 + hitDrumRef.current * 0.6);
     meshRef.current.rotation.x = Math.sin(u.uTime.value * 0.12) * 0.08;
   });
 

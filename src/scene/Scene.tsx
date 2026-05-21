@@ -16,20 +16,26 @@ type Props = {
 // hiccup feels the same as 60fps steady state.
 const TAU_BANDS = 0.18;
 const TAU_PULSE = 0.22;
-const MAX_DT = 1 / 24; // clamp huge dt after a stall, so visuals don't lurch
+// Hit envelope decays — short = punchy, long = lingering.
+const TAU_HIT_BELL = 1.4;
+const TAU_HIT_PLUCK = 0.6;
+const TAU_HIT_DRUM = 0.22;
+const MAX_DT = 1 / 24;
 
 const CANVAS_STYLE = { position: 'fixed', inset: 0 } as const;
 const CAMERA = { position: [0, 0, 7] as [number, number, number], fov: 30 };
 const GL = { antialias: true, alpha: false } as const;
-// Pin DPR so R3F doesn't dynamically reallocate render targets (causes black flashes).
 const DPR = Math.min(typeof window !== 'undefined' ? window.devicePixelRatio : 1, 2);
 
 function SceneInner({ getBands, stateRef }: Props) {
-  // Live refs read by GPU components each frame. Smoothing happens in BandsSampler.
+  // Live refs read by GPU components each frame.
   const bassRef = useRef(0);
   const midRef = useRef(0);
   const trebleRef = useRef(0);
   const beatPulseRef = useRef(0);
+  const hitBellRef = useRef(0);
+  const hitPluckRef = useRef(0);
+  const hitDrumRef = useRef(0);
 
   return (
     <Canvas
@@ -46,13 +52,22 @@ function SceneInner({ getBands, stateRef }: Props) {
         midRef={midRef}
         trebleRef={trebleRef}
         beatPulseRef={beatPulseRef}
+        hitBellRef={hitBellRef}
+        hitPluckRef={hitPluckRef}
+        hitDrumRef={hitDrumRef}
       />
-      <Background trebleRef={trebleRef} stateRef={stateRef} />
+      <Background
+        trebleRef={trebleRef}
+        stateRef={stateRef}
+      />
       <Orb
         bassRef={bassRef}
         midRef={midRef}
         trebleRef={trebleRef}
         beatPulseRef={beatPulseRef}
+        hitBellRef={hitBellRef}
+        hitPluckRef={hitPluckRef}
+        hitDrumRef={hitDrumRef}
         stateRef={stateRef}
       />
       <Particles trebleRef={trebleRef} />
@@ -73,6 +88,9 @@ function BandsSampler({
   midRef,
   trebleRef,
   beatPulseRef,
+  hitBellRef,
+  hitPluckRef,
+  hitDrumRef,
 }: {
   getBands: () => Bands;
   stateRef: React.RefObject<SceneState>;
@@ -80,6 +98,9 @@ function BandsSampler({
   midRef: React.RefObject<number>;
   trebleRef: React.RefObject<number>;
   beatPulseRef: React.RefObject<number>;
+  hitBellRef: React.RefObject<number>;
+  hitPluckRef: React.RefObject<number>;
+  hitDrumRef: React.RefObject<number>;
 }) {
   const phase = useRef(0);
   useFrame((_, dtRaw) => {
@@ -96,6 +117,17 @@ function BandsSampler({
     phase.current = (phase.current + dt * s.params.binaural.beatFreq) % 1;
     const target = s.playing ? Math.sin(phase.current * Math.PI * 2) * 0.5 + 0.5 : 0;
     beatPulseRef.current += (target - beatPulseRef.current) * aPulse;
+
+    // Pull engine hit stamps into refs, then decay them. Engine sets to 1.0
+    // on a trigger; we exp-decay each frame.
+    const h = s.hits;
+    hitBellRef.current = Math.max(hitBellRef.current, h.bell);
+    hitPluckRef.current = Math.max(hitPluckRef.current, h.pluck);
+    hitDrumRef.current = Math.max(hitDrumRef.current, h.drum);
+    h.bell = h.pluck = h.drum = 0;
+    hitBellRef.current *= Math.exp(-dt / TAU_HIT_BELL);
+    hitPluckRef.current *= Math.exp(-dt / TAU_HIT_PLUCK);
+    hitDrumRef.current *= Math.exp(-dt / TAU_HIT_DRUM);
   });
   return null;
 }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AudioEngine, type Bands, type Params, type VoiceId } from './engine';
+import { AudioEngine, type Bands, type Hits, type Params, type VoiceId } from './engine';
 import { SCENE_BY_ID, SCENES, type SceneId } from './scenes';
 import {
   deletePreset as storageDelete,
@@ -13,6 +13,8 @@ export type SceneState = {
   playing: boolean;
   params: Params;
   sceneId: SceneId;
+  /** Live event envelopes — set to 1.0 on trigger by the engine, decayed by the visual layer. */
+  hits: Hits;
 };
 
 export type AudioControls = {
@@ -44,7 +46,12 @@ export function useAudioEngine(): AudioControls {
   if (engineRef.current === null) engineRef.current = new AudioEngine();
   const engine = engineRef.current;
 
-  const stateRef = useRef<SceneState>({ playing: false, params: engine.params, sceneId: 'drift' });
+  const stateRef = useRef<SceneState>({
+    playing: false,
+    params: engine.params,
+    sceneId: 'drift',
+    hits: engine.hits,
+  });
 
   const [presets, setPresets] = useState<Preset[]>(() => listPresets());
   const [, force] = useState(0);
@@ -96,7 +103,6 @@ export function useAudioEngine(): AudioControls {
     const list = listPresets();
     const preset = list.find((p) => p.id === id);
     if (!preset) return;
-    // Lerp voice params via applyScene's preset shape.
     engine.applyScene({
       tempo: preset.params.tempo,
       binaural: preset.params.binaural,
@@ -107,7 +113,6 @@ export function useAudioEngine(): AudioControls {
       pluck: preset.params.pluck,
       subBass: preset.params.subBass,
     });
-    // Snap locks and drift (these are meta state, not lerped).
     for (const v of VOICE_IDS) engine.setLock(v, preset.params.locks[v] ?? false);
     engine.setParam('drift.enabled', preset.params.drift.enabled);
     engine.setParam('drift.intervalSec', preset.params.drift.intervalSec);

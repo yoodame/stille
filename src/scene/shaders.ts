@@ -56,6 +56,9 @@ ${SIMPLEX_3D_GLSL}
 uniform float uTime;
 uniform float uBass;
 uniform float uBeat;
+uniform float uHitBell;
+uniform float uHitPluck;
+uniform float uHitDrum;
 uniform float uNoiseAmount;
 
 varying vec3 vNormal;
@@ -68,10 +71,15 @@ void main() {
   float baseFreq = 0.7;
   float n = snoise(pos * baseFreq + vec3(0.0, uTime * 0.14, 0.0));
 
-  // Shape is purely time-driven — a slow breathing envelope, never audio-reactive.
-  // (Audio drives color and particles, not the silhouette.)
+  // Base shape: slow time-driven breathing. Transient hits (bell/pluck/drum)
+  // add gentle bumps — bells ring slowly, plucks pop short, drums punch briefest.
   float breath = sin(uTime * 0.55) * 0.5 + 0.5;            // ~0.09 Hz, one breath ≈ 11s
-  float amp = 0.020 + breath * 0.010 + uNoiseAmount * 0.006; // user-set noise nudges very gently
+  float amp =
+      0.020
+    + breath * 0.010
+    + uHitBell  * 0.008
+    + uHitPluck * 0.012
+    + uHitDrum  * 0.016;
   float displacement = n * amp;
   pos += normal * displacement;
   vDisp = displacement;
@@ -138,13 +146,13 @@ precision highp float;
 uniform float uTime;
 uniform float uTreble;
 uniform float uPadAmount;
+uniform float uDrone;   // 0..1, sum of binaural+noise+pad+subBass volumes
 uniform vec3 uWarm;
 uniform vec3 uCool;
 uniform vec3 uAccent;
 
 varying vec2 vUv;
 
-// 2D hash for grain
 float hash(vec2 p) {
   return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
 }
@@ -157,19 +165,27 @@ void main() {
   vec3 bottom = mix(deepBg, uCool * 0.5, 0.55);
   vec3 mid    = mix(bottom, top, 0.32);
 
-  float y = vUv.y;
-  vec3 col = mix(bottom, mid, smoothstep(0.0, 0.55, y));
-  col = mix(col, top, smoothstep(0.55, 1.05, y));
+  // Drones bend the gradient mid-point slightly + give it size variation.
+  // splitShift moves the band where bottom→mid transitions, so the bg "breathes".
+  float splitShift = sin(uTime * 0.08) * 0.05 * uDrone;
+  float lowEdge  = 0.55 + splitShift;
+  float highEdge = 1.05 + splitShift;
 
-  // Subtle wash from pad volume, biased by accent
+  float y = vUv.y;
+  vec3 col = mix(bottom, mid, smoothstep(0.0, lowEdge, y));
+  col = mix(col, top, smoothstep(lowEdge, highEdge, y));
+
+  // Subtle accent wash from pad volume
   col += uAccent * 0.06 * uPadAmount * (0.5 + 0.4 * sin(uTime * 0.06));
 
-  // Slow horizontal drift band
-  float band = sin(vUv.y * 6.0 - uTime * 0.05) * 0.5 + 0.5;
-  col += vec3(0.02, 0.02, 0.04) * band * (0.6 + uTreble * 0.8);
+  // Horizontal drift band — speed scales with drone intensity (faster drift when drones are loud).
+  float bandSpeed = 0.04 + uDrone * 0.10;
+  float band = sin(vUv.y * 6.0 - uTime * bandSpeed) * 0.5 + 0.5;
+  col += vec3(0.02, 0.02, 0.04) * band * (0.6 + uTreble * 0.6);
 
-  // Film grain
-  float g = (hash(vUv * 1024.0 + uTime) - 0.5) * 0.025;
+  // Grain density scales with drone — noisier bg when drones are louder.
+  float grainAmt = 0.018 + uDrone * 0.030;
+  float g = (hash(vUv * 1024.0 + uTime) - 0.5) * grainAmt;
   col += g;
 
   gl_FragColor = vec4(col, 1.0);

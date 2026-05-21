@@ -82,8 +82,12 @@ function easeInOut(t: number) { return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t
 
 type Lerp = { voice: VoiceId; param: string; from: number; to: number; startMs: number; durationMs: number };
 
+export type Hits = { bell: number; pluck: number; drum: number };
+
 export class AudioEngine {
   readonly params: Params = JSON.parse(JSON.stringify(DEFAULTS));
+  /** Transient-event envelopes. Engine stamps 1.0 on triggers; the visual layer decays them. */
+  readonly hits: Hits = { bell: 0, pluck: 0, drum: 0 };
 
   private ctx: AudioContext;
   private master: GainNode;
@@ -527,6 +531,7 @@ export class AudioEngine {
   };
 
   private triggerBell() {
+    this.hits.bell = 1;
     const now = this.ctx.currentTime + 0.02;
     const oct = this.params.bells.octave;
     const baseFreq = PENTATONIC_BASE[Math.floor(Math.random() * PENTATONIC_BASE.length)];
@@ -570,6 +575,7 @@ export class AudioEngine {
   };
 
   private triggerPluck() {
+    this.hits.pluck = 1;
     const now = this.ctx.currentTime + 0.02;
     const oct = this.params.pluck.octave;
     const decay = this.params.pluck.decay;
@@ -638,6 +644,7 @@ export class AudioEngine {
   }
 
   private kick(time: number, kit: DrumKit) {
+    this.hits.drum = 1;
     const osc = this.ctx.createOscillator();
     const amp = this.ctx.createGain();
     osc.connect(amp);
@@ -670,6 +677,7 @@ export class AudioEngine {
   }
 
   private snare(time: number, kit: DrumKit) {
+    this.hits.drum = Math.max(this.hits.drum, 0.7);
     if (!this.noiseBuffer) return;
     const source = this.ctx.createBufferSource();
     source.buffer = this.noiseBuffer;

@@ -19,6 +19,7 @@ export function Background({ trebleRef, stateRef }: Props) {
       uTime: { value: 0 },
       uTreble: { value: 0 },
       uPadAmount: { value: 0.5 },
+      uDrone: { value: 0 },
       uWarm:   { value: new THREE.Vector3(...init.warm) },
       uCool:   { value: new THREE.Vector3(...init.cool) },
       uAccent: { value: new THREE.Vector3(...init.accent) },
@@ -26,6 +27,7 @@ export function Background({ trebleRef, stateRef }: Props) {
   }, []);
 
   const tmp = useMemo(() => new THREE.Vector3(), []);
+  const droneRef = useRef(0);
 
   useFrame((_, dtRaw) => {
     if (!matRef.current) return;
@@ -33,13 +35,28 @@ export function Background({ trebleRef, stateRef }: Props) {
     const u = matRef.current.uniforms;
     u.uTime.value += dt;
     u.uTreble.value = trebleRef.current;
-    u.uPadAmount.value = stateRef.current.params.pad.volume;
+
+    // Drone intensity = total ambient drone presence.
+    // Weighted: binaural, noise, pad, sub-bass count; the transient voices (bell/pluck/drum) don't.
+    const p = stateRef.current.params;
+    const target = Math.min(
+      1,
+      p.binaural.volume * 0.9
+      + p.noise.volume * 1.0
+      + p.pad.volume * 0.8
+      + p.subBass.volume * 1.0,
+    ) * 0.5; // scale into a calm range
+    // Smooth the drone level so volume changes don't jolt the bg.
+    const rate = 1 - Math.exp(-dt / 0.5);
+    droneRef.current += (target - droneRef.current) * rate;
+    u.uDrone.value = droneRef.current;
+    u.uPadAmount.value = p.pad.volume;
 
     const pal = SCENE_BY_ID[stateRef.current.sceneId].palette;
-    const rate = 1 - Math.exp(-dt * 0.7);
-    (u.uWarm.value as THREE.Vector3).lerp(tmp.set(...pal.warm), rate);
-    (u.uCool.value as THREE.Vector3).lerp(tmp.set(...pal.cool), rate);
-    (u.uAccent.value as THREE.Vector3).lerp(tmp.set(...pal.accent), rate);
+    const palRate = 1 - Math.exp(-dt * 0.7);
+    (u.uWarm.value as THREE.Vector3).lerp(tmp.set(...pal.warm), palRate);
+    (u.uCool.value as THREE.Vector3).lerp(tmp.set(...pal.cool), palRate);
+    (u.uAccent.value as THREE.Vector3).lerp(tmp.set(...pal.accent), palRate);
   });
 
   return (
