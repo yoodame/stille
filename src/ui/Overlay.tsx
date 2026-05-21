@@ -96,20 +96,19 @@ export function Overlay({ audio }: Props) {
         >
           {currentScene.name}
         </button>
-        {scenesOpen && (
-          <ul className={styles.sceneList} onMouseLeave={() => setScenesOpen(false)}>
-            {SCENES.map((s) => (
-              <li key={s.id}>
-                <button
-                  className={`${styles.sceneOption} ${s.id === audio.sceneId ? styles.sceneOptionActive : ''}`}
-                  onClick={() => { audio.setScene(s.id); setScenesOpen(false); }}
-                >
-                  {s.name}
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
+        <ul className={`${styles.sceneList} ${scenesOpen ? styles.sceneListOpen : ''}`}>
+          {SCENES.map((s) => (
+            <li key={s.id}>
+              <button
+                className={`${styles.sceneOption} ${s.id === audio.sceneId ? styles.sceneOptionActive : ''}`}
+                onClick={() => { audio.setScene(s.id); setScenesOpen(false); }}
+              >
+                <SceneIcon id={s.id} />
+                <span>{s.name}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
       </div>
 
       <div className={styles.playWrap}>
@@ -378,6 +377,69 @@ function ShuffleGlyph() {
       <path d="m18 14 4 4-4 4" />
     </svg>
   );
+}
+
+function SceneIcon({ id }: { id: string }) {
+  const common = {
+    width: 14,
+    height: 14,
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: 1.5,
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+    'aria-hidden': true,
+  };
+  switch (id) {
+    case 'drift':
+      return (
+        <svg {...common}>
+          <path d="M12.67 19a2 2 0 0 0 1.416-.588l6.154-6.172a6 6 0 0 0-8.49-8.49L5.586 9.914A2 2 0 0 0 5 11.328V18a1 1 0 0 0 1 1z" />
+          <path d="M16 8 2 22" />
+          <path d="M17.5 15H9" />
+        </svg>
+      );
+    case 'forest':
+      return (
+        <svg {...common}>
+          <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19.2 2.96a1 1 0 0 1 1.8.66c0 6.49-3.16 9.92-7.42 11.16l-2.34.93" />
+          <path d="M2 21c0-3 1.85-5.36 5.08-6" />
+        </svg>
+      );
+    case 'aurora':
+      return (
+        <svg {...common}>
+          <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
+          <path d="M20 3v4" />
+          <path d="M22 5h-4" />
+          <path d="M4 17v2" />
+          <path d="M5 18H3" />
+        </svg>
+      );
+    case 'heartwood':
+      return (
+        <svg {...common}>
+          <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" />
+        </svg>
+      );
+    case 'coastal':
+      return (
+        <svg {...common}>
+          <path d="M2 6c.6.5 1.2 1 2.5 1C7 7 7 5 9.5 5c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1" />
+          <path d="M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1" />
+          <path d="M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1" />
+        </svg>
+      );
+    case 'tribal':
+      return (
+        <svg {...common}>
+          <path d="m8 3 4 8 5-5 5 15H2L8 3z" />
+        </svg>
+      );
+    default:
+      return null;
+  }
 }
 
 // Lucide-style icons (inlined, stroke-width 1.5 for a lighter feel).
