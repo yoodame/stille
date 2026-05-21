@@ -19,6 +19,8 @@ const TAU_HIT_BELL = 1.4;
 const TAU_HIT_PLUCK = 0.6;
 const TAU_HIT_DRUM = 0.22;
 const TAU_MOUSE = 0.18;
+const TAU_MOUSE_RECENTER = 2.5; // slower, graceful return-to-center
+const LEAVE_DELAY_MS = 10_000;
 const MAX_DT = 1 / 24;
 
 const CANVAS_STYLE = { position: 'fixed', inset: 0 } as const;
@@ -38,16 +40,20 @@ function SceneInner({ getBands, stateRef }: Props) {
   // Anti-magnetic mouse: raw target (from pointer events) and smoothed value (used by visuals).
   const mouseTarget = useRef({ x: 0, y: 0 });
   const mouseSmoothed = useRef({ x: 0, y: 0 });
+  // Timestamp of last pointerleave; null when pointer is in the window.
+  // After LEAVE_DELAY_MS with no return, BandsSampler starts the recenter.
+  const leftAt = useRef<number | null>(null);
+  const recentering = useRef(false);
 
   useEffect(() => {
     const handler = (e: PointerEvent) => {
       mouseTarget.current.x = (e.clientX / window.innerWidth) * 2 - 1;
       mouseTarget.current.y = -((e.clientY / window.innerHeight) * 2 - 1);
+      leftAt.current = null;
+      recentering.current = false;
     };
     const leave = () => {
-      // Decay toward center when pointer leaves the window
-      mouseTarget.current.x = 0;
-      mouseTarget.current.y = 0;
+      leftAt.current = performance.now();
     };
     window.addEventListener('pointermove', handler, { passive: true });
     window.addEventListener('pointerleave', leave);
@@ -77,6 +83,8 @@ function SceneInner({ getBands, stateRef }: Props) {
         hitDrumRef={hitDrumRef}
         mouseTarget={mouseTarget}
         mouseSmoothed={mouseSmoothed}
+        leftAt={leftAt}
+        recentering={recentering}
       />
       <Background trebleRef={trebleRef} stateRef={stateRef} />
       <Halo
@@ -120,6 +128,8 @@ function BandsSampler({
   hitDrumRef,
   mouseTarget,
   mouseSmoothed,
+  leftAt,
+  recentering,
 }: {
   getBands: () => Bands;
   stateRef: React.RefObject<SceneState>;
@@ -132,13 +142,14 @@ function BandsSampler({
   hitDrumRef: React.RefObject<number>;
   mouseTarget: React.RefObject<{ x: number; y: number }>;
   mouseSmoothed: React.RefObject<{ x: number; y: number }>;
+  leftAt: React.RefObject<number | null>;
+  recentering: React.RefObject<boolean>;
 }) {
   const phase = useRef(0);
   useFrame((_, dtRaw) => {
     const dt = Math.min(dtRaw, MAX_DT);
     const aBands = 1 - Math.exp(-dt / TAU_BANDS);
     const aPulse = 1 - Math.exp(-dt / TAU_PULSE);
-    const aMouse = 1 - Math.exp(-dt / TAU_MOUSE);
 
     const { bass, mid, treble } = getBands();
     bassRef.current += (bass - bassRef.current) * aBands;
@@ -160,9 +171,25 @@ function BandsSampler({
     hitPluckRef.current *= Math.exp(-dt / TAU_HIT_PLUCK);
     hitDrumRef.current *= Math.exp(-dt / TAU_HIT_DRUM);
 
-    // Smooth mouse toward target so movement feels graceful.
+    // Recenter after the pointer's been gone LEAVE_DELAY_MS.
+    if (leftAt.current !== null && performance.now() - leftAt.current > LEAVE_DELAY_MS) {
+      mouseTarget.current.x = 0;
+      mouseTarget.current.y = 0;
+      recentering.current = true;
+    }
+    // Use the slower recenter time constant while drifting back to (0, 0).
+    const tau = recentering.current ? TAU_MOUSE_RECENTER : TAU_MOUSE;
+    const aMouse = 1 - Math.exp(-dt / tau);
     mouseSmoothed.current.x += (mouseTarget.current.x - mouseSmoothed.current.x) * aMouse;
     mouseSmoothed.current.y += (mouseTarget.current.y - mouseSmoothed.current.y) * aMouse;
+    // Once we're essentially back at center, drop the recenter flag.
+    if (
+      recentering.current &&
+      Math.abs(mouseSmoothed.current.x) < 0.005 &&
+      Math.abs(mouseSmoothed.current.y) < 0.005
+    ) {
+      recentering.current = false;
+    }
   });
   return null;
 }
