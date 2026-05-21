@@ -86,6 +86,7 @@ function SceneInner({ getBands, stateRef }: Props) {
         leftAt={leftAt}
         recentering={recentering}
       />
+      <CameraDrift />
       <Background trebleRef={trebleRef} stateRef={stateRef} />
       <Halo
         hitBellRef={hitBellRef}
@@ -115,6 +116,20 @@ function SceneInner({ getBands, stateRef }: Props) {
 }
 
 export const Scene = memo(SceneInner);
+
+/** Gentle camera wobble so the scene feels alive even when nothing's happening. */
+function CameraDrift() {
+  const t = useRef(0);
+  useFrame(({ camera }, dtRaw) => {
+    const dt = Math.min(dtRaw, MAX_DT);
+    t.current += dt;
+    camera.position.x = Math.sin(t.current * 0.03) * 0.18;
+    camera.position.y = Math.sin(t.current * 0.025 + 1.5) * 0.12;
+    camera.position.z = 7 + Math.sin(t.current * 0.018) * 0.10;
+    camera.lookAt(0, 0, 0);
+  });
+  return null;
+}
 
 function BandsSampler({
   getBands,

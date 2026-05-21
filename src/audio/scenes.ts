@@ -145,3 +145,27 @@ export const SCENES: Scene[] = [
 export const SCENE_BY_ID: Record<SceneId, Scene> = Object.fromEntries(
   SCENES.map((s) => [s.id, s]),
 ) as Record<SceneId, Scene>;
+
+/**
+ * Return a copy of the palette gently tinted by the user's local time-of-day.
+ * Subtle (±12% warmth shift, ±10% brightness shift) — same scene reads
+ * differently at noon vs at 2am.
+ */
+export function tintForTimeOfDay(p: Palette, date: Date = new Date()): Palette {
+  const hour = date.getHours() + date.getMinutes() / 60;
+  // warmth peaks at 6pm (dusk), low at 6am (dawn)
+  const warmth = 0.5 + 0.5 * Math.cos(((hour - 18) / 24) * Math.PI * 2);
+  // brightness peaks at noon, low at midnight
+  const brightness = 0.5 + 0.5 * Math.cos(((hour - 12) / 24) * Math.PI * 2);
+
+  const warmShift = (warmth - 0.5) * 0.12;
+  const brightShift = (brightness - 0.5) * 0.10;
+
+  const tint = (c: [number, number, number]): [number, number, number] => [
+    Math.max(0, Math.min(1, c[0] + warmShift + brightShift)),
+    Math.max(0, Math.min(1, c[1] + brightShift)),
+    Math.max(0, Math.min(1, c[2] - warmShift + brightShift)),
+  ];
+
+  return { warm: tint(p.warm), cool: tint(p.cool), accent: tint(p.accent) };
+}

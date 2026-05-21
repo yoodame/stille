@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { AudioControls } from '../audio/useAudioEngine';
 import { SCENES } from '../audio/useAudioEngine';
 import type { DrumKit, VoiceId } from '../audio/engine';
@@ -83,6 +83,46 @@ export function Overlay({ audio }: Props) {
     const pick = others[Math.floor(Math.random() * others.length)];
     audio.setScene(pick.id);
   };
+
+  // Keyboard shortcuts. Space = play/pause, S = shuffle, R = reroll, 1-6 = scene.
+  useEffect(() => {
+    const isTypingTarget = (el: EventTarget | null): boolean => {
+      if (!(el instanceof HTMLElement)) return false;
+      const tag = el.tagName;
+      return tag === 'INPUT' || tag === 'TEXTAREA' || el.isContentEditable;
+    };
+    const handler = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (isTypingTarget(e.target)) return;
+      // Number keys 1-6: jump to scene
+      if (e.key >= '1' && e.key <= '9') {
+        const idx = parseInt(e.key, 10) - 1;
+        if (idx < SCENES.length) {
+          audio.setScene(SCENES[idx].id);
+          e.preventDefault();
+        }
+        return;
+      }
+      switch (e.key.toLowerCase()) {
+        case ' ':
+        case 'spacebar': // older browsers
+          audio.toggle();
+          e.preventDefault();
+          break;
+        case 's':
+          handleShuffleScene();
+          e.preventDefault();
+          break;
+        case 'r':
+          audio.randomizeAll();
+          e.preventDefault();
+          break;
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [audio.sceneId]);
 
   return (
     <div className={styles.root}>
