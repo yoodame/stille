@@ -43,12 +43,17 @@ export function Particles({ trebleRef, mouseSmoothed }: Props) {
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const colorBase = useMemo(() => new THREE.Color('#f4efe6'), []);
   const t = useRef(0);
+  // Integrated drift distance so audio-driven speed changes only affect FUTURE
+  // motion — never retroactively shift particles (which caused vertical jumps
+  // whenever the treble band spiked).
+  const drift = useRef(0);
 
   useFrame((_, dtRaw) => {
     if (!meshRef.current) return;
     const dt = Math.min(dtRaw, 1 / 24);
     t.current += dt;
     const speedMul = 1 + trebleRef.current * 0.6;
+    drift.current += dt * speedMul;
 
     // Whole field anti-magnetically shifts opposite the cursor (subtle).
     const shiftX = -mouseSmoothed.current.x * 0.45;
@@ -56,7 +61,7 @@ export function Particles({ trebleRef, mouseSmoothed }: Props) {
 
     for (let i = 0; i < particles.length; i++) {
       const p = particles[i];
-      const yDrift = ((p.basePos.y + t.current * p.speed * speedMul) % FIELD_HEIGHT) - FIELD_HEIGHT / 2;
+      const yDrift = ((p.basePos.y + drift.current * p.speed) % FIELD_HEIGHT) - FIELD_HEIGHT / 2;
       const sway = Math.sin(t.current * 0.4 + p.phase) * 0.12;
       dummy.position.set(p.basePos.x + sway + shiftX, yDrift + shiftY, p.basePos.z);
       dummy.scale.setScalar(p.size);
