@@ -224,19 +224,35 @@
 .play:active { transform: scale(0.96); }
 .playGlyph { width: 14px; height: 14px; display: block; }
 
+/* Right-edge mixer trigger. Always shows a sliders icon (clear affordance);
+   the warm "mixer" label fades in on hover. The vertical pill on the very
+   edge stays as a textural accent. */
 .panelHandle {
   position: absolute;
   top: 50%;
   right: 0;
   transform: translateY(-50%);
-  width: 36px;
+  width: 64px;
   height: 240px;
-  display: grid;
-  place-items: center;
+  background: none;
+  border: none;
+  padding: 0 12px 0 0;
   cursor: pointer;
+  color: var(--sand);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--font);
 }
+
 .panelHandle::after {
   content: '';
+  position: absolute;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
   width: 4px;
   height: 96px;
   background: rgba(244, 239, 230, 0.55);
@@ -248,6 +264,33 @@
   background: var(--warm);
   height: 120px;
   width: 5px;
+}
+
+.panelHandle svg {
+  opacity: 0.72;
+  color: var(--sand);
+  transition: opacity 220ms ease, color 220ms ease, transform 220ms ease;
+}
+
+.panelHandle:hover svg {
+  opacity: 1;
+  color: var(--warm);
+}
+
+.panelHandleLabel {
+  font-size: 9px;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  font-weight: 400;
+  opacity: 0;
+  color: var(--warm);
+  transform: translateY(-4px);
+  transition: opacity 240ms ease, transform 240ms ease;
+  pointer-events: none;
+}
+.panelHandle:hover .panelHandleLabel {
+  opacity: 0.92;
+  transform: translateY(0);
 }
 
 .panel {
