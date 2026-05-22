@@ -11,6 +11,12 @@ const COUNT = 220;
 const FIELD_RADIUS = 6;
 const FIELD_HEIGHT = 8;
 
+// Orb avoidance: keep particles out of a small disc around where the
+// orb sits in world space. Slightly larger than the orb's visible radius
+// (0.7 world units) so they don't graze the silhouette.
+const ORB_AVOID_RADIUS = 0.95;
+const ORB_AVOID_PUSH = 0.65;
+
 type Particle = {
   basePos: THREE.Vector3;
   speed: number;
@@ -43,9 +49,6 @@ export function Particles({ trebleRef, mouseSmoothed }: Props) {
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const colorBase = useMemo(() => new THREE.Color('#f4efe6'), []);
   const t = useRef(0);
-  // Integrated drift distance so audio-driven speed changes only affect FUTURE
-  // motion — never retroactively shift particles (which caused vertical jumps
-  // whenever the treble band spiked).
   const drift = useRef(0);
 
   useFrame((_, dtRaw) => {
@@ -55,15 +58,39 @@ export function Particles({ trebleRef, mouseSmoothed }: Props) {
     const speedMul = 1 + trebleRef.current * 0.6;
     drift.current += dt * speedMul;
 
-    // Whole field anti-magnetically shifts opposite the cursor (subtle).
-    const shiftX = -mouseSmoothed.current.x * 0.45;
-    const shiftY = -mouseSmoothed.current.y * 0.35;
+    // Whole field anti-magnetically shifts opposite the cursor.
+    const fieldShiftX = -mouseSmoothed.current.x * 0.45;
+    const fieldShiftY = -mouseSmoothed.current.y * 0.35;
+
+    // Orb's world position (matches the shift logic in Orb.tsx).
+    const orbX = -mouseSmoothed.current.x * 0.30;
+    const orbY = -mouseSmoothed.current.y * 0.24;
 
     for (let i = 0; i < particles.length; i++) {
       const p = particles[i];
       const yDrift = ((p.basePos.y + drift.current * p.speed) % FIELD_HEIGHT) - FIELD_HEIGHT / 2;
       const sway = Math.sin(t.current * 0.4 + p.phase) * 0.12;
-      dummy.position.set(p.basePos.x + sway + shiftX, yDrift + shiftY, p.basePos.z);
+      let x = p.basePos.x + sway + fieldShiftX;
+      let y = yDrift + fieldShiftY;
+      const z = p.basePos.z;
+
+      // Repel from the orb's screen-position disc — particles flow around it.
+      const dx = x - orbX;
+      const dy = y - orbY;
+      const dist = Math.hypot(dx, dy);
+      if (dist < ORB_AVOID_RADIUS) {
+        const safeDist = Math.max(dist, 0.05);
+        const t01 = 1 - safeDist / ORB_AVOID_RADIUS; // 0 at edge, 1 at center
+        // Smoothstep falloff for a softer push.
+        const falloff = t01 * t01 * (3 - 2 * t01);
+        const nx = dx / safeDist;
+        const ny = dy / safeDist;
+        const push = falloff * ORB_AVOID_PUSH;
+        x += nx * push;
+        y += ny * push;
+      }
+
+      dummy.position.set(x, y, z);
       dummy.scale.setScalar(p.size);
       dummy.updateMatrix();
       meshRef.current.setMatrixAt(i, dummy.matrix);

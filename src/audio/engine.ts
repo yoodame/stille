@@ -58,7 +58,7 @@ export const DEFAULTS: Params = {
   tempo: 62,
   drift: { enabled: false, intervalSec: 120 },
   reverb: { wet: 0.22 },
-  master: { volume: 0.85 },
+  master: { volume: 0.45 },
   binaural: { volume: 0.35, carrierFreq: 200, beatFreq: 8 },
   noise: { volume: 0.4, pan: 0, cutoff: 1400 },
   pad: { volume: 0.5, pan: 0, root: 0, brightness: 0.5 },
