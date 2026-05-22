@@ -13,13 +13,14 @@ type Props = {
 
 // ───── Sea surface ───────────────────────────────────────────────────
 // A horizontal plane below the orb. The visual reading is:
-//   • A bright horizon line at the top edge (sea-meets-sky anchor).
-//   • Caustic-like bright specks scattered across the surface — two
-//     scrolling noise fields multiplied + powered so highlights cluster
-//     into irregular twinkling pockets, never a stripe pattern.
+//   • A soft horizon line where sea meets sky.
+//   • Caustic-like bright specks scattered across the surface (two
+//     scrolling noise fields multiplied + powered) so highlights cluster
+//     into irregular twinkling pockets.
 //   • Long ripple lines drifting slowly horizontally for surface flow.
-//   • A vertical moonlight streak under the orb that breaks into
-//     shimmering chunks as it travels down the surface.
+//   • The orb reflected on the water directly below it: a compact disk
+//     at the horizon plus a shimmering streak descending toward the
+//     viewer, broken into chunks by drifting noise.
 
 const seaVertex = /* glsl */ `
   varying vec2 vUv;
@@ -56,42 +57,52 @@ const seaFragment = /* glsl */ `
     float t = uTime * 0.18;
 
     // Body color: deep cool below, lighter cool near the horizon.
-    vec3 deep   = uCool * 0.42;
-    vec3 shallow = mix(uCool, uAccent, 0.45);
+    // Pulled together so the contrast between body and highlights is
+    // softer — the surface reads as moonlit night water, not daylight.
+    vec3 deep   = uCool * 0.55;
+    vec3 shallow = mix(uCool, uAccent, 0.30);
     vec3 col = mix(deep, shallow, smoothstep(0.0, 0.95, vUv.y));
 
-    // ── Horizon line — bright thin band at the very top of the water.
+    // ── Horizon line — softer, not a glowing slash anymore.
     float horizon = smoothstep(0.035, 0.0, abs(vUv.y - 0.96));
-    col = mix(col, mix(uAccent, uWarm, 0.4), horizon * 0.95);
+    col = mix(col, mix(uAccent, uWarm, 0.4), horizon * 0.50);
 
-    // ── Caustic specks — two scrolling noise fields multiplied together
-    // then raised to a high power, so highlights cluster into irregular
-    // bright pockets that scintillate (instead of striped bands).
+    // ── Caustic specks — toned way down. Read as quiet glints, not
+    // sparklers.
     float n1 = vnoise(vec2(vUv.x * 13.0 - t * 0.35, vUv.y * 17.0 + t * 0.75));
     float n2 = vnoise(vec2(vUv.x * 19.0 + t * 0.55, vUv.y * 24.0 - t * 0.45));
     float specks = pow(n1 * n2, 3.5);
-    // Specks read denser near the horizon — perspective + glancing angle
-    // means more of the sky's light reflects toward the viewer there.
     specks *= 0.4 + 1.4 * smoothstep(0.2, 0.95, vUv.y);
-    col += mix(uAccent, uWarm, 0.2) * specks * 4.0;
+    col += mix(uAccent, uWarm, 0.2) * specks * 1.6;
 
     // ── Slow ripple lines — long horizontal wave fronts drifting
-    // sideways. Much subtler than the old shimmer bands so they read as
-    // surface flow rather than venetian-blind stripes.
+    // sideways. Subtle surface flow.
     float ripple = sin(vUv.y * mix(10.0, 28.0, vUv.y) - t * 0.5 + sin(vUv.x * 3.0 + t * 0.3) * 0.8);
     ripple = pow(ripple * 0.5 + 0.5, 8.0);
     ripple *= smoothstep(0.1, 0.7, vUv.y) * smoothstep(0.95, 0.85, vUv.y);
-    col += mix(uAccent, uWarm, 0.15) * ripple * 0.35;
+    col += mix(uAccent, uWarm, 0.15) * ripple * 0.22;
 
-    // ── Moonlight column under the orb. Breaks into shimmering chunks
-    // (powered noise) so it reads as moonlight scattered on a moving
-    // surface rather than a solid streak.
-    float beamX = abs(vUv.x - 0.5);
-    float beamFalloff = exp(-beamX * 10.0);
-    float beam = beamFalloff * smoothstep(0.05, 0.88, vUv.y);
-    float beamChunks = vnoise(vec2(vUv.x * 22.0, vUv.y * 14.0 - t * 1.8));
-    beam *= 0.25 + 0.85 * pow(beamChunks, 2.5);
-    col += mix(uWarm, uAccent, 0.4) * beam * 1.05;
+    // ── Orb reflection ───────────────────────────────────────────────
+    // The orb mirrored onto the water surface directly below it. Two
+    // parts working together:
+    //   • A compact bright "spot" right at the horizon line where the
+    //     orb's image touches the water (the disk of the reflection).
+    //   • A long shimmering streak descending from the spot toward the
+    //     viewer, broken into chunks by drifting noise so it reads as
+    //     scattered highlights on a moving surface rather than a solid
+    //     column.
+    float reflX = abs(vUv.x - 0.5);
+    // Compact disk just under the horizon (matches the orb's projected
+    // width on the water).
+    float reflSpot = exp(-reflX * reflX * 60.0) * smoothstep(0.84, 0.96, vUv.y);
+    // Streak descends from the spot down into the foreground.
+    float reflStreakX = exp(-reflX * 12.0);
+    float reflStreakY = smoothstep(0.05, 0.96, vUv.y);
+    float reflShimmer = vnoise(vec2(vUv.x * 26.0, vUv.y * 16.0 - t * 1.6));
+    float reflStreak = reflStreakX * reflStreakY * (0.2 + 0.8 * pow(reflShimmer, 2.5));
+    // Warm cream — the orb's body color.
+    vec3 orbColor = mix(uWarm, vec3(1.0, 0.88, 0.72), 0.55);
+    col += orbColor * (reflSpot * 1.4 + reflStreak * 0.45);
 
     // Soft top fade so the horizon doesn't sit against a hard plane edge.
     float topFade = 1.0 - smoothstep(0.98, 1.0, vUv.y);
