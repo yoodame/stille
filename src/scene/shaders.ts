@@ -158,7 +158,8 @@ precision highp float;
 uniform float uTime;
 uniform float uTreble;
 uniform float uPadAmount;
-uniform float uDrone;   // 0..1, sum of binaural+noise+pad+subBass volumes
+uniform float uDrone;       // 0..1, sum of binaural+noise+pad+subBass volumes
+uniform float uSkyDarkness; // 0 = bright sky (default), 1 = night sky
 uniform vec3 uWarm;
 uniform vec3 uCool;
 uniform vec3 uAccent;
@@ -171,9 +172,12 @@ float hash(vec2 p) {
 
 void main() {
   // Top: sandy paper warmed by the scene palette; bottom: deep tinted indigo.
+  // skyDarkness pulls the top toward a deep night sky for scenes like Aurora.
   vec3 paper  = vec3(0.957, 0.937, 0.902);
   vec3 deepBg = vec3(0.075, 0.090, 0.165);
-  vec3 top    = mix(paper, uWarm * 0.65 + paper * 0.5, 0.5);
+  vec3 nightSky = vec3(0.02, 0.04, 0.10);
+  vec3 dayTop = mix(paper, uWarm * 0.65 + paper * 0.5, 0.5);
+  vec3 top    = mix(dayTop, nightSky, uSkyDarkness);
   vec3 bottom = mix(deepBg, uCool * 0.5, 0.55);
   vec3 mid    = mix(bottom, top, 0.32);
 

@@ -20,6 +20,7 @@ export function Background({ trebleRef, stateRef }: Props) {
       uTreble: { value: 0 },
       uPadAmount: { value: 0.5 },
       uDrone: { value: 0 },
+      uSkyDarkness: { value: 0 },
       uWarm:   { value: new THREE.Vector3(...init.warm) },
       uCool:   { value: new THREE.Vector3(...init.cool) },
       uAccent: { value: new THREE.Vector3(...init.accent) },
@@ -51,6 +52,11 @@ export function Background({ trebleRef, stateRef }: Props) {
     droneRef.current += (target - droneRef.current) * rate;
     u.uDrone.value = droneRef.current;
     u.uPadAmount.value = p.pad.volume;
+
+    // Sky darkness per scene — lerp toward target so transitions are smooth.
+    const targetDarkness = SCENE_BY_ID[stateRef.current.sceneId]?.skyDarkness ?? 0;
+    const darknessRate = 1 - Math.exp(-dt / 1.2);
+    u.uSkyDarkness.value += (targetDarkness - u.uSkyDarkness.value) * darknessRate;
 
     const pal = tintForTimeOfDay(SCENE_BY_ID[stateRef.current.sceneId].palette);
     const palRate = 1 - Math.exp(-dt * 0.7);

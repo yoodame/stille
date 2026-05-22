@@ -14,6 +14,8 @@ export type Scene = {
   palette: Palette;
   /** Optional orb positioning per scene. When omitted, orb sits at (0,0,0) scale 0.7. */
   orb?: { position: [number, number, number]; scale: number };
+  /** How dark the upper sky is. 0 = bright (default day-feel); 1 = deep night. */
+  skyDarkness?: number;
   // Partial params — only the keys we want each scene to override.
   preset: {
     tempo: number;
@@ -78,6 +80,10 @@ export const SCENES: Scene[] = [
       cool:   [0.16, 0.34, 0.52],   // deep teal
       accent: [0.68, 0.86, 1.00],   // ice cyan
     },
+    // Orb is a small distant moon in the upper-left.
+    orb: { position: [-1.6, 1.55, -1.2], scale: 0.38 },
+    // Aurora needs a properly dark night sky for the lights to glow against.
+    skyDarkness: 0.94,
     preset: {
       tempo: 50,
       binaural: { volume: 0.28, carrierFreq: 240, beatFreq: 5 },

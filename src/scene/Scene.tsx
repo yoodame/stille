@@ -8,6 +8,7 @@ import { Orb } from './Orb';
 import { Particles } from './Particles';
 import { Halo } from './Halo';
 import { Forest } from './Forest';
+import { Aurora } from './Aurora';
 import { SCENE_BY_ID } from '../audio/scenes';
 
 const DEFAULT_ORB_POS: [number, number, number] = [0, 0, 0];
@@ -118,6 +119,7 @@ function SceneInner({ getBands, stateRef, sceneId }: Props) {
       <CameraDrift />
       <Background trebleRef={trebleRef} stateRef={stateRef} />
       <Forest stateRef={stateRef} trebleRef={trebleRef} visible={sceneId === 'forest'} />
+      <Aurora stateRef={stateRef} trebleRef={trebleRef} visible={sceneId === 'aurora'} />
       <Halo
         hitBellRef={hitBellRef}
         hitPluckRef={hitPluckRef}
