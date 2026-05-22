@@ -63,20 +63,20 @@ const auroraFragment = /* glsl */ `
   void main() {
     float t = uTime * 0.05;
 
-    // Ribbon centerline — sits high enough that the bright crest is mostly
-    // OFF-SCREEN; what we actually see is the soft cascade flowing down.
-    float ribbonY = 0.94
+    // Ribbon centerline — sits just above the visible plane so the bright
+    // peak is OFF-SCREEN; what we see is the soft cascade flowing down.
+    float ribbonY = 0.92
       + 0.05 * sin(vUv.x * 2.0 + t * 0.6)
       + 0.025 * sin(vUv.x * 4.5 + t * 0.4 + 1.4);
 
     float d = vUv.y - ribbonY; // 0 at ribbon, negative below, positive above
 
-    // Vertical envelope — wide soft crest + long cascade falling DOWN.
-    // Crest is much wider/softer than before so it never reads as a hard line
-    // even if part of it dips into view.
-    float crest = exp(-pow(d / 0.10, 2.0));
-    float cascade = exp(d * 2.6) * step(d, 0.0); // 1 at ribbon, fades down
-    float band = crest * 0.35 + cascade * 1.0;
+    // Vertical envelope — wide soft crest (no hard line even when it dips in)
+    // + long cascade falling DOWN. Cascade decays gently so the glow reaches
+    // well into the middle of the sky.
+    float crest = exp(-pow(d / 0.12, 2.0));
+    float cascade = exp(d * 1.9) * step(d, 0.0); // 1 at ribbon, fades down
+    float band = crest * 0.5 + cascade * 1.15;
 
     // Internal texture: FBM gives organic cloudy/streaky brightness variation,
     // drifting sideways with time. The y-stretch makes ribbons feel vertical.
@@ -84,8 +84,9 @@ const auroraFragment = /* glsl */ `
     float n = fbm(npos);
 
     // Multiply the band by the noise — wherever noise is bright, the ribbon
-    // glows. Wherever it's dark, the ribbon is faint. Creates natural shimmer.
-    float ribbon = band * (0.25 + 0.95 * n);
+    // glows brighter. Floor keeps it from ever fully fading as the noise
+    // pattern drifts (so the aurora can't "disappear" mid-scene).
+    float ribbon = band * (0.55 + 0.65 * n);
 
     // ── Subtle vertical rays piercing through the ribbon ──
     // Sharp, narrow vertical streaks that only appear where the ribbon is
