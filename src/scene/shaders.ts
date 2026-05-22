@@ -120,7 +120,8 @@ void main() {
   vec3 lightDir = normalize(vec3(0.55, 0.75, 0.45));
   float diffuse = max(dot(vNormal, lightDir), 0.0);
   // Ambient lifts the dark side so it doesn't go pitch black.
-  float lighting = 0.42 + diffuse * 0.58;
+  // Top light dimmed so the lit hemisphere doesn't glare.
+  float lighting = 0.50 + diffuse * 0.38;
 
   // Vertical gradient: cool at the bottom, warm at the top, driven by scene palette.
   float vGrad = clamp(vViewPos.y * 0.72 + 0.5, 0.0, 1.0);
