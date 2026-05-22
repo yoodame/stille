@@ -144,6 +144,16 @@ export function Overlay({ audio }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [audio.sceneId]);
 
+  // ESC closes the mixer
+  useEffect(() => {
+    if (!panelOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setPanelOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [panelOpen]);
+
   return (
     <div className={styles.root}>
       <div className={styles.brand}>
@@ -200,19 +210,26 @@ export function Overlay({ audio }: Props) {
           </button>
           <button
             className={styles.sideBtn}
-            onClick={() => setPanelOpen(true)}
-            aria-label="Open mixer"
-            title="Open mixer"
+            onClick={() => setPanelOpen((v) => !v)}
+            aria-label={panelOpen ? 'Close mixer' : 'Open mixer'}
+            title="Mixer"
           >
             <SlidersGlyph />
           </button>
         </div>
       </div>
 
-      <div
-        className={`${styles.panel} ${panelOpen ? styles.open : ''}`}
-        onMouseLeave={() => setPanelOpen(false)}
-      >
+      {panelOpen && (
+        <div className={styles.panelBackdrop} onClick={() => setPanelOpen(false)} aria-hidden />
+      )}
+      <div className={`${styles.panel} ${panelOpen ? styles.open : ''}`} role="dialog" aria-label="Mixer"><button
+          type="button"
+          className={styles.panelClose}
+          onClick={() => setPanelOpen(false)}
+          aria-label="Close mixer"
+        >
+          <CloseGlyph />
+        </button>
         <div className={styles.panelTitle}>compose</div>
 
         {/* Globals */}
@@ -454,6 +471,20 @@ function ChevronGlyph({ open }: { open: boolean }) {
   return (
     <svg className={`${styles.chevronGlyph} ${open ? styles.chevronOpen : ''}`} viewBox="0 0 10 10" aria-hidden>
       <path d="M2 4 L5 7 L8 4" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function CloseGlyph() {
+  // lucide: x
+  return (
+    <svg
+      width="14" height="14" viewBox="0 0 24 24"
+      fill="none" stroke="currentColor" strokeWidth="1.5"
+      strokeLinecap="round" strokeLinejoin="round" aria-hidden
+    >
+      <path d="M18 6 6 18" />
+      <path d="m6 6 12 12" />
     </svg>
   );
 }

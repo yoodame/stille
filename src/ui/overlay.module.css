@@ -246,31 +246,78 @@
 
 /* (Right-edge handle removed — mixer trigger now lives inside .playArea.) */
 
+.panelBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 10, 22, 0.30);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  z-index: 9;
+  animation: panelBackdropIn 220ms ease both;
+}
+@keyframes panelBackdropIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 .panel {
-  position: absolute;
+  position: fixed;
   top: 50%;
-  right: 0;
-  transform: translate(100%, -50%);
-  width: 340px;
-  max-height: 88vh;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.96);
+  width: 360px;
+  max-width: calc(100vw - 32px);
+  max-height: 82vh;
   padding: 24px 26px 28px;
   display: flex;
   flex-direction: column;
   gap: 18px;
-  background: rgba(20, 24, 44, 0.66);
-  border-left: 1px solid rgba(244, 239, 230, 0.14);
-  border-top-left-radius: 10px;
-  border-bottom-left-radius: 10px;
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  transition: transform 360ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  background: rgba(15, 18, 32, 0.84);
+  border: 1px solid rgba(244, 239, 230, 0.14);
+  border-radius: 14px;
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform 320ms cubic-bezier(0.2, 0.7, 0.2, 1),
+    opacity 260ms ease;
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: rgba(244, 239, 230, 0.22) transparent;
+  z-index: 10;
 }
-.panel.open { transform: translate(0, -50%); }
+.panel.open {
+  transform: translate(-50%, -50%) scale(1);
+  opacity: 1;
+  pointer-events: auto;
+}
 .panel::-webkit-scrollbar { width: 4px; }
 .panel::-webkit-scrollbar-thumb { background: rgba(244, 239, 230, 0.22); border-radius: 2px; }
+
+.panelClose {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--sand);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  opacity: 0.55;
+  transition: opacity 180ms, border-color 180ms, color 180ms, background 180ms;
+}
+.panelClose:hover {
+  opacity: 1;
+  color: var(--warm);
+  border-color: rgba(244, 239, 230, 0.32);
+  background: rgba(244, 239, 230, 0.04);
+}
 
 .panelTitle {
   font-size: 10px;
