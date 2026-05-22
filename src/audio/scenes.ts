@@ -80,8 +80,8 @@ export const SCENES: Scene[] = [
       cool:   [0.16, 0.34, 0.52],   // deep teal
       accent: [0.68, 0.86, 1.00],   // ice cyan
     },
-    // Orb is a small distant moon in the upper-left.
-    orb: { position: [-1.6, 1.55, -1.2], scale: 0.38 },
+    // Orb stays centered at the default position so it reads as the focal
+    // point against the aurora.
     // Aurora needs a properly dark night sky for the lights to glow against.
     skyDarkness: 0.94,
     preset: {
