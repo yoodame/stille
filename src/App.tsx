@@ -6,7 +6,7 @@ function App() {
   const audio = useAudioEngine();
   return (
     <>
-      <Scene getBands={audio.getBands} stateRef={audio.stateRef} />
+      <Scene getBands={audio.getBands} stateRef={audio.stateRef} sceneId={audio.sceneId} />
       <Overlay audio={audio} />
     </>
   );

@@ -7,10 +7,13 @@ import { Background } from './Background';
 import { Orb } from './Orb';
 import { Particles } from './Particles';
 import { Halo } from './Halo';
+import { Forest } from './Forest';
 
 type Props = {
   getBands: () => Bands;
   stateRef: React.RefObject<SceneState>;
+  /** Re-rendered on scene change so per-scene worlds can mount/unmount. */
+  sceneId: string;
 };
 
 const TAU_BANDS = 0.18;
@@ -28,7 +31,7 @@ const CAMERA = { position: [0, 0, 7] as [number, number, number], fov: 30 };
 const GL = { antialias: true, alpha: false } as const;
 const DPR = Math.min(typeof window !== 'undefined' ? window.devicePixelRatio : 1, 2);
 
-function SceneInner({ getBands, stateRef }: Props) {
+function SceneInner({ getBands, stateRef, sceneId }: Props) {
   const bassRef = useRef(0);
   const midRef = useRef(0);
   const trebleRef = useRef(0);
@@ -97,6 +100,7 @@ function SceneInner({ getBands, stateRef }: Props) {
       />
       <CameraDrift />
       <Background trebleRef={trebleRef} stateRef={stateRef} />
+      {sceneId === 'forest' && <Forest stateRef={stateRef} trebleRef={trebleRef} />}
       <Halo
         hitBellRef={hitBellRef}
         hitPluckRef={hitPluckRef}
