@@ -44,15 +44,21 @@ const auroraFragment = /* glsl */ `
 
     float d = vUv.y - crestY; // 0 at crest, negative below
 
-    // ── Vertical rays — the key visual feature of real aurora ──
-    // Layered sine waves at increasing horizontal frequencies create many
-    // narrow bright vertical columns. Lower pow exponent = more columns.
-    float c1 = sin(vUv.x * 12.0 + t * 0.7);
-    float c2 = sin(vUv.x * 28.0 + t * 1.1 + 1.2);
-    float c3 = sin(vUv.x * 62.0 + t * 1.6 + 2.6);
-    float c4 = sin(vUv.x * 130.0 + t * 2.2 + 3.7);
+    // ── Slanted rays — real aurora ribbons tilt along field lines ──
+    // Adding a y-dependent term to each sin argument tilts the columns.
+    // Slant varies per-band for organic, layered motion. Time drifts faster
+    // than the original so the curtain ripples noticeably.
+    float slant = 0.42 + 0.08 * sin(t * 0.3); // gently varying slant
+    float u1 = (vUv.x + vUv.y * slant)         * 11.0  + t * 1.8;
+    float u2 = (vUv.x + vUv.y * (slant * 0.7)) * 26.0  + t * 2.6  + 1.2;
+    float u3 = (vUv.x + vUv.y * (slant * 1.2)) * 58.0  + t * 3.8  + 2.6;
+    float u4 = (vUv.x + vUv.y * (slant * 0.5)) * 120.0 + t * 5.0  + 3.7;
+    float c1 = sin(u1);
+    float c2 = sin(u2);
+    float c3 = sin(u3);
+    float c4 = sin(u4);
     float columns = (c1 + 0.7 * c2 + 0.5 * c3 + 0.35 * c4) / 2.55;
-    columns = pow(max(0.0, columns), 1.6); // softer peaks → more columns visible
+    columns = pow(max(0.0, columns), 1.4); // softer peaks → more columns visible
 
     // Cascade vertical envelope — strongest just under crest, fading down.
     float vFade = smoothstep(-0.70, -0.01, d);
