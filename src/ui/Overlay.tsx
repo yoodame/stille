@@ -183,19 +183,19 @@ export function Overlay({ audio }: Props) {
           <div className={styles.hint} aria-hidden>tap to begin</div>
         )}
         <button
-          className={styles.play}
-          onClick={handleToggle}
-          aria-label={audio.playing ? 'Pause' : 'Play'}
-        >
-          {audio.playing ? <PauseGlyph /> : <PlayGlyph />}
-        </button>
-        <button
           className={styles.shuffle}
           onClick={handleShuffleScene}
           aria-label="Shuffle scene"
           title="Shuffle scene"
         >
           <ShuffleGlyph />
+        </button>
+        <button
+          className={styles.play}
+          onClick={handleToggle}
+          aria-label={audio.playing ? 'Pause' : 'Play'}
+        >
+          {audio.playing ? <PauseGlyph /> : <PlayGlyph />}
         </button>
       </div>
 
