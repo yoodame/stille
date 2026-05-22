@@ -19,8 +19,8 @@ const TAU_HIT_BELL = 1.4;
 const TAU_HIT_PLUCK = 0.6;
 const TAU_HIT_DRUM = 0.22;
 const TAU_MOUSE = 0.18;
-const TAU_MOUSE_RECENTER = 2.5; // slower, graceful return-to-center
-const LEAVE_DELAY_MS = 10_000;
+const TAU_MOUSE_RECENTER = 2.0; // slower, graceful return-to-center
+const LEAVE_DELAY_MS = 800;     // short buffer so quick mouse-outs don't recenter
 const MAX_DT = 1 / 24;
 
 const CANVAS_STYLE = { position: 'fixed', inset: 0 } as const;
@@ -53,13 +53,22 @@ function SceneInner({ getBands, stateRef }: Props) {
       recentering.current = false;
     };
     const leave = () => {
-      leftAt.current = performance.now();
+      if (leftAt.current === null) leftAt.current = performance.now();
+    };
+    const onVisibility = () => {
+      if (document.hidden) leave();
     };
     window.addEventListener('pointermove', handler, { passive: true });
-    window.addEventListener('pointerleave', leave);
+    // mouseleave on <html> reliably fires when the cursor leaves the viewport.
+    document.documentElement.addEventListener('mouseleave', leave);
+    // Alt-tab / focus-away counts as "off screen" too.
+    window.addEventListener('blur', leave);
+    document.addEventListener('visibilitychange', onVisibility);
     return () => {
       window.removeEventListener('pointermove', handler);
-      window.removeEventListener('pointerleave', leave);
+      document.documentElement.removeEventListener('mouseleave', leave);
+      window.removeEventListener('blur', leave);
+      document.removeEventListener('visibilitychange', onVisibility);
     };
   }, []);
 
