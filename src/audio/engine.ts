@@ -41,6 +41,7 @@ export type Params = {
   tempo: number; // BPM, 40-120
   drift: { enabled: boolean; intervalSec: number };
   reverb: { wet: number };
+  master: { volume: number };
   binaural: { volume: number; carrierFreq: number; beatFreq: number };
   noise: { volume: number; pan: number; cutoff: number };
   pad: { volume: number; pan: number; root: number; brightness: number };
@@ -57,6 +58,7 @@ export const DEFAULTS: Params = {
   tempo: 62,
   drift: { enabled: false, intervalSec: 120 },
   reverb: { wet: 0.22 },
+  master: { volume: 0.85 },
   binaural: { volume: 0.35, carrierFreq: 200, beatFreq: 8 },
   noise: { volume: 0.4, pan: 0, cutoff: 1400 },
   pad: { volume: 0.5, pan: 0, root: 0, brightness: 0.5 },
@@ -72,6 +74,7 @@ export const RANGES: Record<string, { min: number; max: number; step: number }> 
   'tempo':           { min: 40,  max: 120, step: 1 },
   'drift.intervalSec': { min: 30, max: 180, step: 5 },
   'reverb.wet':      { min: 0,   max: 1,   step: 0.01 },
+  'master.volume':   { min: 0,   max: 1,   step: 0.01 },
   'binaural.volume':    { min: 0,    max: 1,    step: 0.01 },
   'binaural.carrierFreq': { min: 120, max: 300, step: 1 },
   'binaural.beatFreq':  { min: 4,    max: 14,   step: 0.1 },
@@ -353,7 +356,10 @@ export class AudioEngine {
 
     this.master.gain.cancelScheduledValues(now);
     this.master.gain.setValueAtTime(Math.max(this.master.gain.value, 0.0001), now);
-    this.master.gain.exponentialRampToValueAtTime(0.7, now + FADE_S);
+    this.master.gain.exponentialRampToValueAtTime(
+      Math.max(this.params.master.volume * 0.82, 0.0002),
+      now + FADE_S,
+    );
 
     this._playing = true;
 
@@ -488,6 +494,7 @@ export class AudioEngine {
       case 'pluck': this.applyPluck(); break;
       case 'subBass': this.applySubBass(); break;
       case 'reverb': this.applyReverb(); break;
+      case 'master': this.applyMaster(); break;
     }
   }
 
@@ -495,6 +502,16 @@ export class AudioEngine {
     const now = this.ctx.currentTime;
     this.wetGain.gain.cancelScheduledValues(now);
     this.wetGain.gain.linearRampToValueAtTime(this.params.reverb.wet, now + 0.15);
+  }
+
+  private applyMaster() {
+    if (!this._playing) return; // start() handles the initial ramp
+    const now = this.ctx.currentTime;
+    this.master.gain.cancelScheduledValues(now);
+    this.master.gain.linearRampToValueAtTime(
+      Math.max(this.params.master.volume * 0.82, 0.0002),
+      now + 0.12,
+    );
   }
 
   private applyBinaural() {
