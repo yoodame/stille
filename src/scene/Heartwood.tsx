@@ -32,15 +32,15 @@ const glowFragment = /* glsl */ `
   varying vec2 vUv;
 
   void main() {
-    // Anchor at the centre of the plane — the plane itself is positioned
-    // so this point lands where the tipi tops converge. Squashed
-    // vertically so the bloom reads as fire glowing upward.
-    vec2 c = (vUv - vec2(0.5, 0.5)) * vec2(1.0, 1.5);
+    // Anchor at the centre of the plane. Stretched vertically so the
+    // bloom reads as upward-licking flame rather than a circle.
+    vec2 c = (vUv - vec2(0.5, 0.5)) * vec2(1.2, 1.5);
     float d = length(c);
 
-    // Bright hot core + softer outer halo.
-    float core = exp(-d * 5.0);
-    float halo = exp(-d * 1.5);
+    // Steep falloff so the contribution dies off well before the plane
+    // edge — no visible rectangle outline against the bg.
+    float core = exp(-d * 7.0);
+    float halo = exp(-d * 2.8);
 
     // Two non-harmonic sines for irregular flicker.
     float flicker = 0.75 + 0.25 * sin(uTime * 4.2 + sin(uTime * 6.7) * 1.8);
@@ -50,8 +50,13 @@ const glowFragment = /* glsl */ `
     vec3 hot = mix(uAccent, vec3(1.0, 0.78, 0.55), core * 0.8);
     vec3 col = mix(uWarm, hot, smoothstep(0.0, 0.55, core + halo * 0.4));
 
-    float intensity = (core * 1.4 + halo * 0.9) * flicker;
-    float alpha = intensity * uOpacity;
+    float intensity = (core * 1.2 + halo * 0.7) * flicker;
+
+    // Radial edge mask: alpha is forced to 0 at the plane edges so no
+    // matter how the falloff sums, the plane can't show a rectangular
+    // outline against the background.
+    float edgeMask = 1.0 - smoothstep(0.3, 0.48, length(vUv - 0.5));
+    float alpha = intensity * uOpacity * edgeMask;
     if (alpha < 0.004) discard;
 
     gl_FragColor = vec4(col * intensity, alpha);
@@ -156,9 +161,9 @@ export function Heartwood({ stateRef, trebleRef, visible }: Props) {
   return (
     <group ref={groupRef} renderOrder={-1} visible={false}>
       {/* Glow plane sits between the tipi and camera; its centre lands
-          where the tipi tops converge so the bloom reads as fire at the
-          peak of the pile. */}
-      <mesh position={[0, -1.3, -2.5]} renderOrder={2}>
+          where the tipi tops converge. depthTest stays on so the orb
+          properly occludes the plane (no rectangle outline behind it). */}
+      <mesh position={[0, -1.3, -2.5]}>
         <planeGeometry args={[6, 4]} />
         <shaderMaterial
           ref={glowMatRef}
@@ -167,7 +172,6 @@ export function Heartwood({ stateRef, trebleRef, visible }: Props) {
           uniforms={glowUniforms}
           transparent
           depthWrite={false}
-          depthTest={false}
           blending={THREE.AdditiveBlending}
         />
       </mesh>
