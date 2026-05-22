@@ -63,17 +63,20 @@ const auroraFragment = /* glsl */ `
   void main() {
     float t = uTime * 0.05;
 
-    // Ribbon centerline — undulates slowly across the upper sky.
-    float ribbonY = 0.70
-      + 0.06 * sin(vUv.x * 2.0 + t * 0.6)
-      + 0.03 * sin(vUv.x * 4.5 + t * 0.4 + 1.4);
+    // Ribbon centerline — sits high enough that the bright crest is mostly
+    // OFF-SCREEN; what we actually see is the soft cascade flowing down.
+    float ribbonY = 0.94
+      + 0.05 * sin(vUv.x * 2.0 + t * 0.6)
+      + 0.025 * sin(vUv.x * 4.5 + t * 0.4 + 1.4);
 
     float d = vUv.y - ribbonY; // 0 at ribbon, negative below, positive above
 
-    // Vertical envelope — narrow Gaussian crest + a slow cascade falling DOWN.
-    float crest = exp(-pow(d / 0.04, 2.0));
-    float cascade = exp(d * 3.5) * step(d, 0.0); // 1 at ribbon, fades down to 0
-    float band = crest * 0.8 + cascade * 0.9;
+    // Vertical envelope — wide soft crest + long cascade falling DOWN.
+    // Crest is much wider/softer than before so it never reads as a hard line
+    // even if part of it dips into view.
+    float crest = exp(-pow(d / 0.10, 2.0));
+    float cascade = exp(d * 2.6) * step(d, 0.0); // 1 at ribbon, fades down
+    float band = crest * 0.35 + cascade * 1.0;
 
     // Internal texture: FBM gives organic cloudy/streaky brightness variation,
     // drifting sideways with time. The y-stretch makes ribbons feel vertical.
