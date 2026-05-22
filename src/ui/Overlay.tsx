@@ -178,38 +178,37 @@ export function Overlay({ audio }: Props) {
         </ul>
       </div>
 
-      <div className={styles.playWrap}>
+      <div className={styles.playArea}>
         {showHint && !audio.playing && (
           <div className={styles.hint} aria-hidden>tap to begin</div>
         )}
-        <button
-          className={styles.shuffle}
-          onClick={handleShuffleScene}
-          aria-label="Shuffle scene"
-          title="Shuffle scene"
-        >
-          <ShuffleGlyph />
-        </button>
-        <button
-          className={styles.play}
-          onClick={handleToggle}
-          aria-label={audio.playing ? 'Pause' : 'Play'}
-        >
-          {audio.playing ? <PauseGlyph /> : <PlayGlyph />}
-        </button>
+        <div className={styles.playWrap}>
+          <button
+            className={styles.sideBtn}
+            onClick={handleShuffleScene}
+            aria-label="Shuffle scene"
+            title="Shuffle scene"
+          >
+            <ShuffleGlyph />
+          </button>
+          <button
+            className={styles.play}
+            onClick={handleToggle}
+            aria-label={audio.playing ? 'Pause' : 'Play'}
+          >
+            {audio.playing ? <PauseGlyph /> : <PlayGlyph />}
+          </button>
+          <button
+            className={styles.sideBtn}
+            onClick={() => setPanelOpen(true)}
+            aria-label="Open mixer"
+            title="Open mixer"
+          >
+            <SlidersGlyph />
+          </button>
+        </div>
       </div>
 
-      <button
-        type="button"
-        className={styles.panelHandle}
-        onMouseEnter={() => setPanelOpen(true)}
-        onClick={() => setPanelOpen((v) => !v)}
-        aria-label={panelOpen ? 'Close mixer' : 'Open mixer'}
-        aria-expanded={panelOpen}
-      >
-        <span className={styles.panelHandleLabel}>mixer</span>
-        <SlidersGlyph />
-      </button>
       <div
         className={`${styles.panel} ${panelOpen ? styles.open : ''}`}
         onMouseLeave={() => setPanelOpen(false)}

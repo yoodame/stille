@@ -156,27 +156,47 @@
 .sceneOptionActive { opacity: 1; color: var(--warm); }
 .sceneOptionActive svg { opacity: 1; }
 
-.playWrap {
+/* Wider hover hit-area around the play wrapper so hovering anywhere near
+   the play button reveals shuffle (left) + mixer (right). */
+.playArea {
   position: absolute;
-  bottom: 56px;
+  bottom: 36px;
   left: 50%;
   transform: translateX(-50%);
+  padding: 22px 36px;
+}
+
+.playWrap {
   display: flex;
   align-items: center;
   gap: 0;
-  transition: gap 320ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  padding: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  transition:
+    gap 320ms cubic-bezier(0.2, 0.7, 0.2, 1),
+    padding 320ms cubic-bezier(0.2, 0.7, 0.2, 1),
+    background 320ms ease,
+    border-color 320ms ease;
 }
-.playWrap:hover { gap: 14px; }
 
-/* Shuffle sits to the LEFT of play. Collapsed to width 0 by default so the
-   play button stays at true viewport-center. On hover the shuffle grows in
-   and pushes play to the right. */
-.shuffle {
+/* On hover: frosted pill expands, side buttons grow in on both sides. */
+.playArea:hover .playWrap {
+  gap: 12px;
+  padding: 6px 14px;
+  background: rgba(20, 24, 44, 0.62);
+  border-color: rgba(244, 239, 230, 0.10);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.sideBtn {
   width: 0;
   height: 40px;
   border-radius: 50%;
   border: 1px solid transparent;
-  background: rgba(244, 239, 230, 0.03);
+  background: transparent;
   color: var(--sand);
   cursor: pointer;
   display: grid;
@@ -190,16 +210,16 @@
     border-color 240ms ease,
     background 240ms ease,
     color 240ms ease;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
 }
-.playWrap:hover .shuffle {
+
+.playArea:hover .sideBtn {
   width: 40px;
-  opacity: 0.85;
-  border-color: rgba(244, 239, 230, 0.4);
+  opacity: 0.82;
+  border-color: rgba(244, 239, 230, 0.35);
   pointer-events: auto;
 }
-.shuffle:hover {
+
+.sideBtn:hover {
   opacity: 1;
   border-color: var(--warm);
   background: rgba(217, 201, 163, 0.08);
@@ -224,74 +244,7 @@
 .play:active { transform: scale(0.96); }
 .playGlyph { width: 14px; height: 14px; display: block; }
 
-/* Right-edge mixer trigger. Always shows a sliders icon (clear affordance);
-   the warm "mixer" label fades in on hover. The vertical pill on the very
-   edge stays as a textural accent. */
-.panelHandle {
-  position: absolute;
-  top: 50%;
-  right: 0;
-  transform: translateY(-50%);
-  width: 64px;
-  height: 240px;
-  background: none;
-  border: none;
-  padding: 0 12px 0 0;
-  cursor: pointer;
-  color: var(--sand);
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  justify-content: center;
-  gap: 8px;
-  font-family: var(--font);
-}
-
-.panelHandle::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  right: 0;
-  transform: translateY(-50%);
-  width: 4px;
-  height: 96px;
-  background: rgba(244, 239, 230, 0.55);
-  border-radius: 3px 0 0 3px;
-  transition: background 220ms ease, height 220ms ease, width 220ms ease;
-}
-.panelHandle:hover::after,
-.panel:hover ~ .panelHandle::after {
-  background: var(--warm);
-  height: 120px;
-  width: 5px;
-}
-
-.panelHandle svg {
-  opacity: 0.72;
-  color: var(--sand);
-  transition: opacity 220ms ease, color 220ms ease, transform 220ms ease;
-}
-
-.panelHandle:hover svg {
-  opacity: 1;
-  color: var(--warm);
-}
-
-.panelHandleLabel {
-  font-size: 9px;
-  letter-spacing: 0.32em;
-  text-transform: uppercase;
-  font-weight: 400;
-  opacity: 0;
-  color: var(--warm);
-  transform: translateY(-4px);
-  transition: opacity 240ms ease, transform 240ms ease;
-  pointer-events: none;
-}
-.panelHandle:hover .panelHandleLabel {
-  opacity: 0.92;
-  transform: translateY(0);
-}
+/* (Right-edge handle removed — mixer trigger now lives inside .playArea.) */
 
 .panel {
   position: absolute;
