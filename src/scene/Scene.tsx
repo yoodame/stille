@@ -8,6 +8,11 @@ import { Orb } from './Orb';
 import { Particles } from './Particles';
 import { Halo } from './Halo';
 import { Forest } from './Forest';
+import { SCENE_BY_ID } from '../audio/scenes';
+
+const DEFAULT_ORB_POS: [number, number, number] = [0, 0, 0];
+const DEFAULT_ORB_SCALE = 0.7;
+const ORB_ANCHOR_TAU = 1.4; // seconds — gentle glide to per-scene orb position
 
 type Props = {
   getBands: () => Bands;
@@ -31,6 +36,8 @@ const CAMERA = { position: [0, 0, 7] as [number, number, number], fov: 30 };
 const GL = { antialias: true, alpha: false } as const;
 const DPR = Math.min(typeof window !== 'undefined' ? window.devicePixelRatio : 1, 2);
 
+export type OrbAnchor = { x: number; y: number; z: number; scale: number };
+
 function SceneInner({ getBands, stateRef, sceneId }: Props) {
   const bassRef = useRef(0);
   const midRef = useRef(0);
@@ -39,6 +46,15 @@ function SceneInner({ getBands, stateRef, sceneId }: Props) {
   const hitBellRef = useRef(0);
   const hitPluckRef = useRef(0);
   const hitDrumRef = useRef(0);
+
+  // Orb anchor — lerped toward the current scene's per-scene position/scale.
+  // Read by Orb, Halo, and Particles so they all track the same focal point.
+  const orbAnchor = useRef<OrbAnchor>({
+    x: DEFAULT_ORB_POS[0],
+    y: DEFAULT_ORB_POS[1],
+    z: DEFAULT_ORB_POS[2],
+    scale: DEFAULT_ORB_SCALE,
+  });
 
   // Anti-magnetic mouse: raw target (from pointer events) and smoothed value (used by visuals).
   const mouseTarget = useRef({ x: 0, y: 0 });
@@ -97,6 +113,7 @@ function SceneInner({ getBands, stateRef, sceneId }: Props) {
         mouseSmoothed={mouseSmoothed}
         leftAt={leftAt}
         recentering={recentering}
+        orbAnchor={orbAnchor}
       />
       <CameraDrift />
       <Background trebleRef={trebleRef} stateRef={stateRef} />
@@ -106,6 +123,7 @@ function SceneInner({ getBands, stateRef, sceneId }: Props) {
         hitPluckRef={hitPluckRef}
         hitDrumRef={hitDrumRef}
         mouseSmoothed={mouseSmoothed}
+        orbAnchor={orbAnchor}
         stateRef={stateRef}
       />
       <Orb
@@ -117,9 +135,15 @@ function SceneInner({ getBands, stateRef, sceneId }: Props) {
         hitPluckRef={hitPluckRef}
         hitDrumRef={hitDrumRef}
         mouseSmoothed={mouseSmoothed}
+        orbAnchor={orbAnchor}
         stateRef={stateRef}
       />
-      <Particles trebleRef={trebleRef} mouseSmoothed={mouseSmoothed} stateRef={stateRef} />
+      <Particles
+        trebleRef={trebleRef}
+        mouseSmoothed={mouseSmoothed}
+        orbAnchor={orbAnchor}
+        stateRef={stateRef}
+      />
       <EffectComposer multisampling={0}>
         <Bloom intensity={0.55} luminanceThreshold={0.5} luminanceSmoothing={0.7} kernelSize={3} />
         <Vignette eskil={false} offset={0.22} darkness={0.55} />
@@ -158,6 +182,7 @@ function BandsSampler({
   mouseSmoothed,
   leftAt,
   recentering,
+  orbAnchor,
 }: {
   getBands: () => Bands;
   stateRef: React.RefObject<SceneState>;
@@ -172,6 +197,7 @@ function BandsSampler({
   mouseSmoothed: React.RefObject<{ x: number; y: number }>;
   leftAt: React.RefObject<number | null>;
   recentering: React.RefObject<boolean>;
+  orbAnchor: React.RefObject<OrbAnchor>;
 }) {
   const phase = useRef(0);
   useFrame((_, dtRaw) => {
@@ -218,6 +244,19 @@ function BandsSampler({
     ) {
       recentering.current = false;
     }
+
+    // Lerp orb anchor toward the current scene's per-scene position/scale.
+    const sceneOrb = SCENE_BY_ID[stateRef.current.sceneId]?.orb;
+    const tx = sceneOrb?.position[0] ?? DEFAULT_ORB_POS[0];
+    const ty = sceneOrb?.position[1] ?? DEFAULT_ORB_POS[1];
+    const tz = sceneOrb?.position[2] ?? DEFAULT_ORB_POS[2];
+    const ts = sceneOrb?.scale       ?? DEFAULT_ORB_SCALE;
+    const aRate = 1 - Math.exp(-dt / ORB_ANCHOR_TAU);
+    const a = orbAnchor.current;
+    a.x += (tx - a.x) * aRate;
+    a.y += (ty - a.y) * aRate;
+    a.z += (tz - a.z) * aRate;
+    a.scale += (ts - a.scale) * aRate;
   });
   return null;
 }

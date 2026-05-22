@@ -12,6 +12,8 @@ export type Scene = {
   id: SceneId;
   name: string;
   palette: Palette;
+  /** Optional orb positioning per scene. When omitted, orb sits at (0,0,0) scale 0.7. */
+  orb?: { position: [number, number, number]; scale: number };
   // Partial params — only the keys we want each scene to override.
   preset: {
     tempo: number;
@@ -53,6 +55,10 @@ export const SCENES: Scene[] = [
       cool:   [0.18, 0.32, 0.24],   // moss
       accent: [0.95, 0.72, 0.40],   // late-afternoon sun
     },
+    // Orb becomes a small moon in the upper-middle-right of the sky — over
+    // the gap between the left near-pair and the right hero, so no tree
+    // silhouette ever overlaps it.
+    orb: { position: [1.0, 1.55, -1.2], scale: 0.42 },
     preset: {
       tempo: 56,
       binaural: { volume: 0.28, carrierFreq: 175, beatFreq: 6 },

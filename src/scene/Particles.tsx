@@ -4,16 +4,20 @@ import * as THREE from 'three';
 import type { SceneState } from '../audio/useAudioEngine';
 import { SCENE_BY_ID, tintForTimeOfDay } from '../audio/scenes';
 
+type OrbAnchor = { x: number; y: number; z: number; scale: number };
+
 type Props = {
   trebleRef: React.RefObject<number>;
   mouseSmoothed: React.RefObject<{ x: number; y: number }>;
+  orbAnchor: React.RefObject<OrbAnchor>;
   stateRef: React.RefObject<SceneState>;
 };
 
 const COUNT = 220;
 const FIELD_RADIUS = 6;
 const FIELD_HEIGHT = 8;
-const ORB_AVOID_RADIUS = 0.95;
+// Avoidance radius scales with the orb (smaller orbs have a smaller no-fly zone).
+const ORB_AVOID_FACTOR = 1.36; // multiply orb scale to get avoid radius
 const ORB_AVOID_PUSH = 0.65;
 
 type Particle = {
@@ -69,7 +73,7 @@ const particleFragmentShader = /* glsl */ `
   }
 `;
 
-export function Particles({ trebleRef, mouseSmoothed, stateRef }: Props) {
+export function Particles({ trebleRef, mouseSmoothed, orbAnchor, stateRef }: Props) {
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const matRef = useRef<THREE.ShaderMaterial>(null);
 
@@ -125,9 +129,11 @@ export function Particles({ trebleRef, mouseSmoothed, stateRef }: Props) {
     const fieldShiftX = -mouseSmoothed.current.x * 0.45;
     const fieldShiftY = -mouseSmoothed.current.y * 0.35;
 
-    // Orb world position (matches Orb.tsx mouse-driven shift).
-    const orbX = -mouseSmoothed.current.x * 0.30;
-    const orbY = -mouseSmoothed.current.y * 0.24;
+    // Orb world position = scene anchor + mouse-driven shift (matches Orb.tsx).
+    const a = orbAnchor.current;
+    const orbX = a.x - mouseSmoothed.current.x * 0.30;
+    const orbY = a.y - mouseSmoothed.current.y * 0.24;
+    const avoidR = a.scale * ORB_AVOID_FACTOR;
 
     for (let i = 0; i < particles.length; i++) {
       const p = particles[i];
@@ -137,13 +143,13 @@ export function Particles({ trebleRef, mouseSmoothed, stateRef }: Props) {
       let y = yDrift + fieldShiftY;
       const z = p.basePos.z;
 
-      // Repel from orb's screen-position disc.
+      // Repel from orb's screen-position disc (scales with orb size).
       const dx = x - orbX;
       const dy = y - orbY;
       const dist = Math.hypot(dx, dy);
-      if (dist < ORB_AVOID_RADIUS) {
+      if (dist < avoidR) {
         const safeDist = Math.max(dist, 0.05);
-        const t01 = 1 - safeDist / ORB_AVOID_RADIUS;
+        const t01 = 1 - safeDist / avoidR;
         const falloff = t01 * t01 * (3 - 2 * t01);
         const nx = dx / safeDist;
         const ny = dy / safeDist;

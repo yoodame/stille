@@ -53,15 +53,18 @@ void main() {
 }
 `;
 
+type OrbAnchor = { x: number; y: number; z: number; scale: number };
+
 type Props = {
   hitBellRef: React.RefObject<number>;
   hitPluckRef: React.RefObject<number>;
   hitDrumRef: React.RefObject<number>;
   mouseSmoothed: React.RefObject<{ x: number; y: number }>;
+  orbAnchor: React.RefObject<OrbAnchor>;
   stateRef: React.RefObject<SceneState>;
 };
 
-export function Halo({ hitBellRef, hitPluckRef, hitDrumRef, mouseSmoothed, stateRef }: Props) {
+export function Halo({ hitBellRef, hitPluckRef, hitDrumRef, mouseSmoothed, orbAnchor, stateRef }: Props) {
   const meshRef = useRef<THREE.Mesh>(null);
   const matRef = useRef<THREE.ShaderMaterial>(null);
 
@@ -91,9 +94,14 @@ export function Halo({ hitBellRef, hitPluckRef, hitDrumRef, mouseSmoothed, state
     (u.uAccent.value as THREE.Vector3).lerp(tmp.set(...pal.accent), rate);
     (u.uWarm.value as THREE.Vector3).lerp(tmp.set(...pal.warm), rate);
 
-    // Follow the orb (anti-magnetic shift)
-    meshRef.current.position.x = -mouseSmoothed.current.x * 0.25;
-    meshRef.current.position.y = -mouseSmoothed.current.y * 0.20;
+    // Follow the orb (scene anchor + anti-magnetic mouse shift).
+    const a = orbAnchor.current;
+    meshRef.current.position.x = a.x - mouseSmoothed.current.x * 0.25;
+    meshRef.current.position.y = a.y - mouseSmoothed.current.y * 0.20;
+    meshRef.current.position.z = a.z;
+    // Halo also scales with the orb (smaller for moon-like orbs).
+    const haloScale = a.scale / 0.7;
+    meshRef.current.scale.setScalar(haloScale);
   });
 
   return (

@@ -5,6 +5,8 @@ import type { SceneState } from '../audio/useAudioEngine';
 import { SCENE_BY_ID, tintForTimeOfDay } from '../audio/scenes';
 import { orbFragmentShader, orbVertexShader } from './shaders';
 
+type OrbAnchor = { x: number; y: number; z: number; scale: number };
+
 type Props = {
   bassRef: React.RefObject<number>;
   midRef: React.RefObject<number>;
@@ -14,15 +16,14 @@ type Props = {
   hitPluckRef: React.RefObject<number>;
   hitDrumRef: React.RefObject<number>;
   mouseSmoothed: React.RefObject<{ x: number; y: number }>;
+  orbAnchor: React.RefObject<OrbAnchor>;
   stateRef: React.RefObject<SceneState>;
 };
-
-const BASE_SCALE = 0.7;
 
 export function Orb({
   bassRef, midRef, trebleRef, beatPulseRef,
   hitBellRef, hitPluckRef, hitDrumRef,
-  mouseSmoothed, stateRef,
+  mouseSmoothed, orbAnchor, stateRef,
 }: Props) {
   const meshRef = useRef<THREE.Mesh>(null);
   const matRef = useRef<THREE.ShaderMaterial>(null);
@@ -75,13 +76,15 @@ export function Orb({
     meshRef.current.rotation.y += dt * (0.06 + hitDrumRef.current * 0.7);
     meshRef.current.rotation.x = Math.sin(u.uTime.value * 0.12) * 0.08;
 
-    // Subtle scale pulse on drum hits, plus a faint puff on pluck.
-    const scale = BASE_SCALE * (1 + hitDrumRef.current * 0.05 + hitPluckRef.current * 0.02);
+    // Scale = scene-anchor scale × small hit-driven pulse.
+    const a = orbAnchor.current;
+    const scale = a.scale * (1 + hitDrumRef.current * 0.05 + hitPluckRef.current * 0.02);
     meshRef.current.scale.setScalar(scale);
 
-    // Anti-magnetic: shift opposite of mouse direction
-    meshRef.current.position.x = -mouseSmoothed.current.x * 0.30;
-    meshRef.current.position.y = -mouseSmoothed.current.y * 0.24;
+    // Position = scene anchor + anti-magnetic mouse shift.
+    meshRef.current.position.x = a.x - mouseSmoothed.current.x * 0.30;
+    meshRef.current.position.y = a.y - mouseSmoothed.current.y * 0.24;
+    meshRef.current.position.z = a.z;
   });
 
   return (
