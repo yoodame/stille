@@ -106,7 +106,7 @@ function SceneInner({ getBands, stateRef }: Props) {
         mouseSmoothed={mouseSmoothed}
         stateRef={stateRef}
       />
-      <Particles trebleRef={trebleRef} mouseSmoothed={mouseSmoothed} />
+      <Particles trebleRef={trebleRef} mouseSmoothed={mouseSmoothed} stateRef={stateRef} />
       <EffectComposer multisampling={0}>
         <Bloom intensity={0.55} luminanceThreshold={0.5} luminanceSmoothing={0.7} kernelSize={3} />
         <Vignette eskil={false} offset={0.22} darkness={0.55} />
