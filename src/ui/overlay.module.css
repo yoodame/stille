@@ -144,35 +144,48 @@
 .sceneOptionActive { opacity: 1; color: var(--warm); }
 .sceneOptionActive svg { opacity: 1; }
 
-/* Wider hover hit-area around the play wrapper so hovering anywhere near
-   the play button reveals shuffle (left) + mixer (right). */
+/* Play sits anchored at viewport-center; the side buttons unfold to its
+   RIGHT. The hover hit-area is wider than the visible content. */
 .playArea {
   position: absolute;
   bottom: 36px;
   left: 50%;
-  transform: translateX(-50%);
+  /* Anchor: subtract play's half-width (30) + playArea's left padding (36)
+     so play.center ends up exactly at 50% of viewport. */
+  transform: translateX(-66px);
   padding: 22px 36px;
 }
 
 .playWrap {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 0;
-  padding: 0;
-  background: transparent;
-  border: 1px solid transparent;
   border-radius: 999px;
-  transition:
-    gap 320ms cubic-bezier(0.2, 0.7, 0.2, 1),
-    padding 320ms cubic-bezier(0.2, 0.7, 0.2, 1),
-    background 320ms ease,
-    border-color 320ms ease;
+  transition: gap 320ms cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
-/* On hover: frosted pill expands, side buttons grow in on both sides. */
-.playArea:hover .playWrap {
-  gap: 12px;
-  padding: 6px 14px;
+/* Frosted pill is a ::before pseudo-element with negative insets, so the
+   content doesn't shift when the pill appears. */
+.playWrap::before {
+  content: '';
+  position: absolute;
+  inset: -8px -14px;
+  border-radius: 999px;
+  background: transparent;
+  border: 1px solid transparent;
+  backdrop-filter: blur(0);
+  -webkit-backdrop-filter: blur(0);
+  transition:
+    background 320ms ease,
+    border-color 320ms ease,
+    backdrop-filter 320ms ease;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.playArea:hover .playWrap { gap: 12px; }
+.playArea:hover .playWrap::before {
   background: rgba(20, 24, 44, 0.62);
   border-color: rgba(244, 239, 230, 0.10);
   backdrop-filter: blur(16px);

@@ -210,6 +210,13 @@ export function Overlay({ audio }: Props) {
         </div>
         <div className={styles.playWrap}>
           <button
+            className={styles.play}
+            onClick={handleToggle}
+            aria-label={audio.playing ? 'Pause' : 'Play'}
+          >
+            {audio.playing ? <PauseGlyph /> : <PlayGlyph />}
+          </button>
+          <button
             className={styles.sideBtn}
             onClick={() => setScenesOpen((v) => !v)}
             aria-label={scenesOpen ? 'Close scene picker' : 'Open scene picker'}
@@ -225,13 +232,6 @@ export function Overlay({ audio }: Props) {
             title="Shuffle scene"
           >
             <ShuffleGlyph />
-          </button>
-          <button
-            className={styles.play}
-            onClick={handleToggle}
-            aria-label={audio.playing ? 'Pause' : 'Play'}
-          >
-            {audio.playing ? <PauseGlyph /> : <PlayGlyph />}
           </button>
           <button
             className={styles.sideBtn}
