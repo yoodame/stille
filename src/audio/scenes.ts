@@ -122,6 +122,9 @@ export const SCENES: Scene[] = [
       cool:   [0.34, 0.45, 0.58],   // sea blue
       accent: [0.82, 0.92, 1.00],   // foam
     },
+    // Pull the upper sky down to a moodier twilight tone so it doesn't
+    // overpower the orb and water.
+    skyDarkness: 0.45,
     preset: {
       tempo: 52,
       binaural: { volume: 0.22, carrierFreq: 210, beatFreq: 6 },
