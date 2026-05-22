@@ -82,7 +82,23 @@ const auroraFragment = /* glsl */ `
 
     // Multiply the band by the noise — wherever noise is bright, the ribbon
     // glows. Wherever it's dark, the ribbon is faint. Creates natural shimmer.
-    float intensity = band * (0.25 + 0.95 * n);
+    float ribbon = band * (0.25 + 0.95 * n);
+
+    // ── Subtle vertical rays piercing through the ribbon ──
+    // Sharp, narrow vertical streaks that only appear where the ribbon is
+    // glowing, fading downward into the cascade. Slight slant for organic feel.
+    float slant = 0.08;
+    float r1 = abs(sin((vUv.x + vUv.y * slant) * 18.0 + t * 1.0));
+    r1 = pow(r1, 9.0);
+    float r2 = abs(sin((vUv.x + vUv.y * slant * 1.4) * 47.0 + t * 1.6));
+    r2 = pow(r2, 14.0);
+    // Slow horizontal masking so rays appear in pockets, not everywhere at once.
+    float rayMask = smoothstep(0.4, 0.85, fbm(vec2(vUv.x * 1.6 - t * 0.3, t * 0.2)));
+    float rays = (r1 + r2 * 0.7) * rayMask;
+    // Gate rays by the band envelope — they live inside the curtain.
+    rays *= band;
+
+    float intensity = ribbon + rays * 0.85;
 
     // ── Color along the cascade: green (deep) → cyan (mid) → violet (crest) ──
     float cPos = clamp((d + 0.42) / 0.50, 0.0, 1.0);
