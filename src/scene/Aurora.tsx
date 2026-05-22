@@ -29,60 +29,71 @@ const auroraFragment = /* glsl */ `
   precision highp float;
   uniform float uTime;
   uniform float uOpacity;
-  uniform vec3 uAccent;       // cyan/violet
-  uniform vec3 uWarm;         // soft violet at curtain crest
-  uniform vec3 uGreen;        // aurora green at the cascade base
+  uniform vec3 uAccent;       // cyan
+  uniform vec3 uWarm;         // soft violet (top)
+  uniform vec3 uGreen;        // classic aurora green (bottom)
   varying vec2 vUv;
 
+  // 2D value-noise + 4-octave FBM — the standard ingredient for cloudy /
+  // ribbon-like aurora textures.
+  float hash(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+  }
+  float vnoise(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    vec2 u = f * f * (3.0 - 2.0 * f);
+    return mix(
+      mix(hash(i + vec2(0.0, 0.0)), hash(i + vec2(1.0, 0.0)), u.x),
+      mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x),
+      u.y
+    );
+  }
+  float fbm(vec2 p) {
+    float sum = 0.0;
+    float amp = 0.55;
+    for (int i = 0; i < 4; i++) {
+      sum += vnoise(p) * amp;
+      p *= 2.0;
+      amp *= 0.55;
+    }
+    return sum;
+  }
+
   void main() {
-    float t = uTime * 0.04;
+    float t = uTime * 0.05;
 
-    // Curtain top — undulating S-curve.
-    float crestY = 0.80
-      + 0.07 * sin(vUv.x * 2.0 + t * 0.6)
-      + 0.04 * sin(vUv.x * 5.5 + t * 0.4 + 1.7);
+    // Ribbon centerline — undulates slowly across the upper sky.
+    float ribbonY = 0.70
+      + 0.06 * sin(vUv.x * 2.0 + t * 0.6)
+      + 0.03 * sin(vUv.x * 4.5 + t * 0.4 + 1.4);
 
-    float d = vUv.y - crestY; // 0 at crest, negative below
+    float d = vUv.y - ribbonY; // 0 at ribbon, negative below, positive above
 
-    // ── Mostly-vertical rays with a subtle lean ──
-    // A small y-dependent shift gives a 6-10° tilt — enough to feel organic,
-    // not so much that the columns become horizontal water-flow.
-    float slant = 0.12 + 0.04 * sin(t * 0.25);
-    float u1 = (vUv.x + vUv.y * slant)         * 11.0  + t * 1.4;
-    float u2 = (vUv.x + vUv.y * (slant * 0.8)) * 26.0  + t * 1.9  + 1.2;
-    float u3 = (vUv.x + vUv.y * (slant * 1.1)) * 58.0  + t * 2.6  + 2.6;
-    float u4 = (vUv.x + vUv.y * (slant * 0.6)) * 120.0 + t * 3.4  + 3.7;
-    float c1 = sin(u1);
-    float c2 = sin(u2);
-    float c3 = sin(u3);
-    float c4 = sin(u4);
-    float columns = (c1 + 0.7 * c2 + 0.5 * c3 + 0.35 * c4) / 2.55;
-    columns = pow(max(0.0, columns), 1.4);
+    // Vertical envelope — narrow Gaussian crest + a slow cascade falling DOWN.
+    float crest = exp(-pow(d / 0.04, 2.0));
+    float cascade = exp(d * 3.5) * step(d, 0.0); // 1 at ribbon, fades down to 0
+    float band = crest * 0.8 + cascade * 0.9;
 
-    // Cascade vertical envelope — strongest just under crest, fading down.
-    float vFade = smoothstep(-0.70, -0.01, d);
-    // No rays above the crest.
-    float belowMask = 1.0 - smoothstep(0.0, 0.04, d);
+    // Internal texture: FBM gives organic cloudy/streaky brightness variation,
+    // drifting sideways with time. The y-stretch makes ribbons feel vertical.
+    vec2 npos = vec2(vUv.x * 3.0 - t * 0.5, vUv.y * 1.8 + t * 0.15);
+    float n = fbm(npos);
 
-    float rays = columns * vFade * belowMask * 1.8;
+    // Multiply the band by the noise — wherever noise is bright, the ribbon
+    // glows. Wherever it's dark, the ribbon is faint. Creates natural shimmer.
+    float intensity = band * (0.25 + 0.95 * n);
 
-    // Subtle crest line — bright thin band at the top of the cascade,
-    // varied by the same columns so it doesn't read as a clean horizontal stroke.
-    float crest = exp(-pow(d / 0.014, 2.0)) * (0.2 + 0.8 * columns) * 0.55;
-
-    float intensity = rays + crest;
-
-    // ── Color along the cascade: green (deep) → cyan (mid) → violet (top) ──
-    float cPos = clamp((d + 0.60) / 0.65, 0.0, 1.0);
+    // ── Color along the cascade: green (deep) → cyan (mid) → violet (crest) ──
+    float cPos = clamp((d + 0.42) / 0.50, 0.0, 1.0);
     vec3 lower = mix(uGreen, uAccent, smoothstep(0.05, 0.55, cPos));
-    vec3 col   = mix(lower,  uWarm,   smoothstep(0.80, 1.00, cPos));
+    vec3 col   = mix(lower,  uWarm,   smoothstep(0.85, 1.05, cPos));
 
-    float alpha = clamp(intensity, 0.0, 1.0) * uOpacity * 1.0;
+    float alpha = clamp(intensity, 0.0, 1.0) * uOpacity * 0.95;
     if (alpha < 0.004) discard;
 
-    // Modest brightness boost — preserves color saturation instead of washing
-    // everything to white.
-    gl_FragColor = vec4(col * (0.85 + intensity * 0.6), alpha);
+    // Soft brightness boost on the brightest regions for the glow feel.
+    gl_FragColor = vec4(col * (0.7 + intensity * 0.5), alpha);
   }
 `;
 
