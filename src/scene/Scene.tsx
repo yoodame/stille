@@ -100,7 +100,7 @@ function SceneInner({ getBands, stateRef, sceneId }: Props) {
       />
       <CameraDrift />
       <Background trebleRef={trebleRef} stateRef={stateRef} />
-      {sceneId === 'forest' && <Forest stateRef={stateRef} trebleRef={trebleRef} />}
+      <Forest stateRef={stateRef} trebleRef={trebleRef} visible={sceneId === 'forest'} />
       <Halo
         hitBellRef={hitBellRef}
         hitPluckRef={hitPluckRef}
