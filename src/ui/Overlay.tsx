@@ -154,6 +154,27 @@ export function Overlay({ audio }: Props) {
     return () => window.removeEventListener('keydown', onKey);
   }, [panelOpen]);
 
+  // Scene popup: ESC and click-outside close it.
+  useEffect(() => {
+    if (!scenesOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setScenesOpen(false);
+    };
+    const onDown = (e: MouseEvent) => {
+      const target = e.target;
+      if (!(target instanceof Element)) return;
+      if (target.closest(`.${styles.scenePopup}`)) return;
+      if (target.closest(`.${styles.playWrap}`)) return;
+      setScenesOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('mousedown', onDown);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('mousedown', onDown);
+    };
+  }, [scenesOpen]);
+
   return (
     <div className={styles.root}>
       <div className={styles.brand}>
@@ -164,35 +185,39 @@ export function Overlay({ audio }: Props) {
         </div>
       </div>
 
-      <div className={styles.scenePicker}>
-        <button
-          className={styles.sceneCurrent}
-          onClick={() => setScenesOpen((v) => !v)}
-          aria-haspopup="listbox"
-          aria-expanded={scenesOpen}
-        >
-          {currentScene.name}
-        </button>
-        <ul className={`${styles.sceneList} ${scenesOpen ? styles.sceneListOpen : ''}`}>
-          {SCENES.map((s) => (
-            <li key={s.id}>
-              <button
-                className={`${styles.sceneOption} ${s.id === audio.sceneId ? styles.sceneOptionActive : ''}`}
-                onClick={() => { audio.setScene(s.id); setScenesOpen(false); }}
-              >
-                <SceneIcon id={s.id} />
-                <span>{s.name}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      </div>
+      {/* Scene picker moved into the bottom control bar. */}
 
       <div className={styles.playArea}>
         {showHint && !audio.playing && (
           <div className={styles.hint} aria-hidden>tap to begin</div>
         )}
+        {/* Scene popup drops up from the cluster when scene button is clicked. */}
+        <div className={`${styles.scenePopup} ${scenesOpen ? styles.scenePopupOpen : ''}`}>
+          <div className={styles.scenePopupTitle}>scene</div>
+          <ul className={styles.sceneList}>
+            {SCENES.map((s) => (
+              <li key={s.id}>
+                <button
+                  className={`${styles.sceneOption} ${s.id === audio.sceneId ? styles.sceneOptionActive : ''}`}
+                  onClick={() => { audio.setScene(s.id); setScenesOpen(false); }}
+                >
+                  <SceneIcon id={s.id} />
+                  <span>{s.name}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
         <div className={styles.playWrap}>
+          <button
+            className={styles.sideBtn}
+            onClick={() => setScenesOpen((v) => !v)}
+            aria-label={scenesOpen ? 'Close scene picker' : 'Open scene picker'}
+            aria-expanded={scenesOpen}
+            title={`Scene · ${currentScene.name}`}
+          >
+            <SceneIcon id={audio.sceneId} />
+          </button>
           <button
             className={styles.sideBtn}
             onClick={handleShuffleScene}

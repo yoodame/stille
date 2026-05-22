@@ -73,67 +73,55 @@
   line-height: 1.4;
 }
 
-.scenePicker {
+/* Scene popup drops up from the play cluster. */
+.scenePopup {
   position: absolute;
-  top: 24px;
-  right: 32px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 8px;
-  /* Extend the hover hit-area downward so the gap to the list stays "inside" */
-  padding-bottom: 8px;
+  bottom: 100%;
+  left: 50%;
+  transform: translate(-50%, 8px);
+  margin-bottom: -8px;
+  width: 220px;
+  padding: 12px 8px 10px;
+  background: rgba(15, 18, 32, 0.84);
+  border: 1px solid rgba(244, 239, 230, 0.12);
+  border-radius: 14px;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.40);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 240ms ease,
+    transform 280ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  z-index: 11;
+}
+.scenePopupOpen {
+  opacity: 1;
+  transform: translate(-50%, -10px);
+  pointer-events: auto;
 }
 
-.sceneCurrent {
-  background: none;
-  border: none;
-  padding: 6px 2px;
-  color: var(--sand);
-  font-family: var(--font);
-  font-weight: 400;
-  font-size: 12px;
-  letter-spacing: 0.32em;
+.scenePopupTitle {
+  font-size: 9px;
+  letter-spacing: 0.34em;
   text-transform: uppercase;
-  opacity: 0.85;
-  cursor: pointer;
-  transition: opacity 180ms, color 180ms;
-}
-.sceneCurrent:hover,
-.scenePicker:hover .sceneCurrent {
-  opacity: 1;
-  color: var(--warm);
+  opacity: 0.45;
+  padding: 0 10px 8px;
 }
 
 .sceneList {
   list-style: none;
   margin: 0;
-  padding: 8px 6px;
-  background: rgba(15, 18, 32, 0.78);
-  border: 1px solid rgba(244, 239, 230, 0.10);
-  border-radius: 10px;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  min-width: 188px;
+  padding: 0;
   display: flex;
   flex-direction: column;
   gap: 1px;
-  opacity: 0;
-  transform: translateY(-6px);
-  pointer-events: none;
-  transition: opacity 280ms ease, transform 280ms cubic-bezier(0.2, 0.7, 0.2, 1);
-}
-
-.scenePicker:hover .sceneList,
-.sceneList.sceneListOpen {
-  opacity: 1;
-  transform: translateY(0);
-  pointer-events: auto;
 }
 
 .sceneOption {
   background: none;
   border: none;
+  width: 100%;
   padding: 8px 12px;
   color: var(--sand);
   font-family: var(--font);
