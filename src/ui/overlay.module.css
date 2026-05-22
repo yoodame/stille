@@ -565,6 +565,52 @@
   opacity: 0.4;
 }
 
+/* ===== Onboarding hint ===== */
+
+.hint {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  margin-bottom: 14px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 11px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--sand);
+  pointer-events: none;
+  animation: hintPulse 2.4s ease-in-out infinite;
+}
+
+@keyframes hintPulse {
+  0%, 100% { opacity: 0.35; transform: translate(-50%, 2px); }
+  50%      { opacity: 0.8;  transform: translate(-50%, -2px); }
+}
+
+/* ===== Mobile (narrow screens) ===== */
+
+@media (max-width: 700px) {
+  .panel {
+    width: min(340px, calc(100vw - 28px));
+    padding: 22px 22px 28px;
+  }
+  .panel.open {
+    transform: translate(-14px, -50%);
+  }
+  .brand {
+    top: 20px;
+    left: 20px;
+  }
+  .wordmark { font-size: 18px; }
+  .scenePicker { top: 20px; right: 20px; }
+  .footer { display: none; }
+  /* Larger touch targets on hit-and-miss elements */
+  .lock { width: 14px; height: 14px; }
+  .chevron { padding: 6px; }
+  .play { width: 60px; height: 60px; }
+  .shuffle { width: 44px; height: 44px; }
+}
+
 /* ===== Saved presets ===== */
 
 .saveRow {

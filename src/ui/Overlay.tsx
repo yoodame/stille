@@ -62,11 +62,31 @@ const VOICE_DETAILS: Record<VoiceId, VoiceDetail[]> = {
 
 const KITS: DrumKit[] = ['lofi', 'tribal', 'electronic'];
 
+const ONBOARD_KEY = 'stille.seen.v1';
+
 export function Overlay({ audio }: Props) {
   const [panelOpen, setPanelOpen] = useState(false);
   const [expanded, setExpanded] = useState<VoiceId | null>(null);
   const [scenesOpen, setScenesOpen] = useState(false);
   const [presetName, setPresetName] = useState('');
+  const [showHint, setShowHint] = useState(false);
+
+  useEffect(() => {
+    try {
+      if (!localStorage.getItem(ONBOARD_KEY)) setShowHint(true);
+    } catch { /* private mode etc */ }
+  }, []);
+
+  const dismissHint = () => {
+    if (!showHint) return;
+    setShowHint(false);
+    try { localStorage.setItem(ONBOARD_KEY, '1'); } catch { /* ignore */ }
+  };
+
+  const handleToggle = () => {
+    dismissHint();
+    audio.toggle();
+  };
 
   const currentScene = SCENES.find((s) => s.id === audio.sceneId) ?? SCENES[0];
 
@@ -159,9 +179,12 @@ export function Overlay({ audio }: Props) {
       </div>
 
       <div className={styles.playWrap}>
+        {showHint && !audio.playing && (
+          <div className={styles.hint} aria-hidden>tap to begin</div>
+        )}
         <button
           className={styles.play}
-          onClick={audio.toggle}
+          onClick={handleToggle}
           aria-label={audio.playing ? 'Pause' : 'Play'}
         >
           {audio.playing ? <PauseGlyph /> : <PlayGlyph />}

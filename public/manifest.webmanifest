@@ -1,0 +1,19 @@
+{
+  "name": "stille",
+  "short_name": "stille",
+  "description": "Personalized soundscapes for focus, relax, sleep.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#131726",
+  "theme_color": "#131726",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
