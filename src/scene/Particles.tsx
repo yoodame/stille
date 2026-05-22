@@ -23,16 +23,23 @@ type Particle = {
   size: number;
 };
 
-// Each particle is a small instanced sphere shaded to look like a soft glowing
-// droplet — bright fresnel-core, palette-tinted, additive-blended.
+// Each particle is a camera-facing 1x1 plane (billboard) with a soft radial
+// gradient — gives true feathered edges that read as glowing droplets, not
+// hard circles. Same palette as the orb so they feel like cousins.
 const particleVertexShader = /* glsl */ `
-  varying vec3 vNormal;
-  varying vec3 vViewPos;
+  varying vec2 vUv;
   void main() {
-    vec4 mvPos = modelViewMatrix * instanceMatrix * vec4(position, 1.0);
-    vViewPos = mvPos.xyz;
-    vNormal = normalize(normalMatrix * mat3(instanceMatrix) * normal);
-    gl_Position = projectionMatrix * mvPos;
+    vUv = uv;
+    // Center of this instance in world space (translation column).
+    vec4 worldCenter = modelMatrix * vec4(instanceMatrix[3].xyz, 1.0);
+    // To view space — center sits at viewCenter.
+    vec4 viewCenter = viewMatrix * worldCenter;
+    // Instance scale (uniform via .scale.setScalar()).
+    float s = length(instanceMatrix[0].xyz);
+    // Plane local XY (default planeGeometry vertices in [-0.5, 0.5]) used as
+    // view-space offsets so the plane always faces camera.
+    viewCenter.xy += position.xy * s;
+    gl_Position = projectionMatrix * viewCenter;
   }
 `;
 
@@ -41,23 +48,24 @@ const particleFragmentShader = /* glsl */ `
   uniform vec3 uWarm;
   uniform vec3 uAccent;
   uniform float uAlpha;
-
-  varying vec3 vNormal;
-  varying vec3 vViewPos;
+  varying vec2 vUv;
 
   void main() {
-    vec3 viewDir = normalize(-vViewPos);
-    float fresnel = 1.0 - max(dot(viewDir, vNormal), 0.0);
+    vec2 d = vUv - 0.5;
+    float r = length(d) * 2.0;       // 0 at center, 1 at plane edge
 
-    // Each particle reads like a tiny lit droplet: bright soft core, gentle rim.
-    float core = pow(1.0 - fresnel, 1.8);
-    float rim  = pow(fresnel, 2.4) * 0.32;
+    // Two-tier radial falloff: a bright soft core, a gentler halo around it.
+    float core = 1.0 - smoothstep(0.0, 0.55, r);
+    core = pow(core, 1.6);
+    float halo = 1.0 - smoothstep(0.0, 1.0, r);
+    halo = pow(halo, 2.2) * 0.35;
 
-    // Subtle palette tint — same family as the orb so they feel like cousins.
-    vec3 col = mix(uWarm, uAccent, 0.32);
-    float a = clamp(core + rim, 0.0, 1.0) * uAlpha;
+    vec3 col = mix(uWarm, uAccent, 0.35);
+    // Subtly brighten the core so the center feels lit, not flat.
+    col *= 0.85 + core * 0.45;
 
-    gl_FragColor = vec4(col * (0.85 + core * 0.4), a);
+    float a = clamp(core + halo, 0.0, 1.0) * uAlpha;
+    gl_FragColor = vec4(col, a);
   }
 `;
 
@@ -159,7 +167,7 @@ export function Particles({ trebleRef, mouseSmoothed, stateRef }: Props) {
       frustumCulled={false}
       renderOrder={2}
     >
-      <sphereGeometry args={[1, 16, 12]} />
+      <planeGeometry args={[1, 1]} />
       <shaderMaterial
         ref={matRef}
         vertexShader={particleVertexShader}
