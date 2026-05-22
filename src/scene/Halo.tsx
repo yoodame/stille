@@ -2,7 +2,7 @@ import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { SceneState } from '../audio/useAudioEngine';
-import { SCENE_BY_ID } from '../audio/scenes';
+import { SCENE_BY_ID, paletteFor } from '../audio/scenes';
 
 const HALO_SIZE = 4.6;
 
@@ -89,7 +89,7 @@ export function Halo({ hitBellRef, hitPluckRef, hitDrumRef, mouseSmoothed, orbAn
     u.uHitPluck.value = hitPluckRef.current;
     u.uHitDrum.value = hitDrumRef.current;
 
-    const pal = SCENE_BY_ID[stateRef.current.sceneId].palette;
+    const pal = paletteFor(stateRef.current.sceneId);
     const rate = 1 - Math.exp(-dt * 0.7);
     (u.uAccent.value as THREE.Vector3).lerp(tmp.set(...pal.accent), rate);
     (u.uWarm.value as THREE.Vector3).lerp(tmp.set(...pal.warm), rate);

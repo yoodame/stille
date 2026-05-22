@@ -159,6 +159,15 @@ export const SCENE_BY_ID: Record<SceneId, Scene> = Object.fromEntries(
 ) as Record<SceneId, Scene>;
 
 /**
+ * Defensive palette lookup — returns the scene's palette, falling back to
+ * Drift if the id is somehow stale or invalid. Prevents the entire render
+ * loop from throwing on a transient bad sceneId.
+ */
+export function paletteFor(id: SceneId | string): Palette {
+  return SCENE_BY_ID[id as SceneId]?.palette ?? SCENE_BY_ID.drift.palette;
+}
+
+/**
  * Return a copy of the palette gently tinted by the user's local time-of-day.
  * Subtle (±12% warmth shift, ±10% brightness shift) — same scene reads
  * differently at noon vs at 2am.

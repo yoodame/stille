@@ -2,7 +2,7 @@ import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { SceneState } from '../audio/useAudioEngine';
-import { SCENE_BY_ID, tintForTimeOfDay } from '../audio/scenes';
+import { SCENE_BY_ID, paletteFor, tintForTimeOfDay } from '../audio/scenes';
 
 type OrbAnchor = { x: number; y: number; z: number; scale: number };
 
@@ -120,7 +120,7 @@ export function Particles({ trebleRef, mouseSmoothed, orbAnchor, stateRef }: Pro
     drift.current += dt * speedMul;
 
     // Palette lerp (matches Orb / Background pipeline).
-    const pal = tintForTimeOfDay(SCENE_BY_ID[stateRef.current.sceneId].palette);
+    const pal = tintForTimeOfDay(paletteFor(stateRef.current.sceneId));
     const rate = 1 - Math.exp(-dt * 0.7);
     (matRef.current.uniforms.uWarm.value as THREE.Vector3).lerp(tmp.set(...pal.warm), rate);
     (matRef.current.uniforms.uAccent.value as THREE.Vector3).lerp(tmp.set(...pal.accent), rate);

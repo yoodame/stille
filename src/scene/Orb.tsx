@@ -2,7 +2,7 @@ import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { SceneState } from '../audio/useAudioEngine';
-import { SCENE_BY_ID, tintForTimeOfDay } from '../audio/scenes';
+import { SCENE_BY_ID, paletteFor, tintForTimeOfDay } from '../audio/scenes';
 import { orbFragmentShader, orbVertexShader } from './shaders';
 
 type OrbAnchor = { x: number; y: number; z: number; scale: number };
@@ -66,7 +66,7 @@ export function Orb({
     u.uPadAmount.value = p.pad.volume;
 
     // Palette lerp toward current scene, tinted by time of day.
-    const pal = tintForTimeOfDay(SCENE_BY_ID[stateRef.current.sceneId].palette);
+    const pal = tintForTimeOfDay(paletteFor(stateRef.current.sceneId));
     const rate = 1 - Math.exp(-dt * 0.7);
     (u.uWarm.value as THREE.Vector3).lerp(tmp.set(...pal.warm), rate);
     (u.uCool.value as THREE.Vector3).lerp(tmp.set(...pal.cool), rate);

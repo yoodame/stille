@@ -2,16 +2,14 @@ import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { SceneState } from '../audio/useAudioEngine';
-import { SCENE_BY_ID, tintForTimeOfDay } from '../audio/scenes';
+import { paletteFor, tintForTimeOfDay } from '../audio/scenes';
+import { FADE_TAU, PALETTE_TAU } from './sceneConstants';
 
 type Props = {
   stateRef: React.RefObject<SceneState>;
   trebleRef: React.RefObject<number>;
   visible: boolean;
 };
-
-const FADE_TAU = 0.45;
-const PALETTE_TAU = 1.0;
 
 // ───── Aurora ribbon ──────────────────────────────────────────────────
 // A large plane in the upper sky. Bright crest sits OFF-SCREEN above the
@@ -80,12 +78,15 @@ const auroraFragment = /* glsl */ `
     float n = fbm(npos);
     float ribbon = band * (0.55 + 0.65 * n);
 
-    // Subtle vertical rays inside the curtain.
+    // Subtle vertical streaks inside the curtain. Driven by stretched value
+    // noise (not abs(sin)) so the rays land at irregular x-positions — never
+    // a periodic comb. pow() sharpens each noise peak into a narrow streak.
+    // Two scales overlap so we get both thick columns and fine highlights.
     float slant = 0.08;
-    float r1 = abs(sin((vUv.x + vUv.y * slant) * 18.0 + t * 1.0));
-    r1 = pow(r1, 9.0);
-    float r2 = abs(sin((vUv.x + vUv.y * slant * 1.4) * 47.0 + t * 1.6));
-    r2 = pow(r2, 14.0);
+    float r1 = vnoise(vec2((vUv.x + vUv.y * slant) * 22.0 + t * 1.0, t * 0.4));
+    r1 = pow(r1, 6.0);
+    float r2 = vnoise(vec2((vUv.x + vUv.y * slant * 1.4) * 55.0 + t * 1.6, t * 0.6 + 7.0));
+    r2 = pow(r2, 7.0);
     float rayMask = smoothstep(0.4, 0.85, fbm(vec2(vUv.x * 1.6 - t * 0.3, t * 0.2)));
     float rays = (r1 + r2 * 0.7) * rayMask * band;
 
@@ -142,7 +143,7 @@ export function Aurora({ stateRef, trebleRef, visible }: Props) {
     if (groupRef.current) groupRef.current.visible = opacityRef.current > 0.005;
 
     if (opacityRef.current > 0.005 && auroraMatRef.current) {
-      const pal = tintForTimeOfDay(SCENE_BY_ID[stateRef.current.sceneId].palette);
+      const pal = tintForTimeOfDay(paletteFor(stateRef.current.sceneId));
       const rate = 1 - Math.exp(-dt / PALETTE_TAU);
 
       // Aurora bands track scene accent + warm. uniform.value is a Vector3,

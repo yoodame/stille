@@ -2,7 +2,8 @@ import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { SceneState } from '../audio/useAudioEngine';
-import { SCENE_BY_ID, tintForTimeOfDay } from '../audio/scenes';
+import { paletteFor, tintForTimeOfDay } from '../audio/scenes';
+import { FADE_TAU, PALETTE_TAU } from './sceneConstants';
 
 type Props = {
   stateRef: React.RefObject<SceneState>;
@@ -79,9 +80,6 @@ const hillFragment = /* glsl */ `
   }
 `;
 
-const FADE_TAU = 0.45;
-const PALETTE_TAU = 1.0;
-
 export function Forest({ stateRef, trebleRef, visible }: Props) {
   const groupRef = useRef<THREE.Group>(null);
   const treesRef = useRef<THREE.Group>(null);
@@ -129,7 +127,7 @@ export function Forest({ stateRef, trebleRef, visible }: Props) {
     if (groupRef.current) groupRef.current.visible = opacityRef.current > 0.005;
 
     if (opacityRef.current > 0.005) {
-      const pal = tintForTimeOfDay(SCENE_BY_ID[stateRef.current.sceneId].palette);
+      const pal = tintForTimeOfDay(paletteFor(stateRef.current.sceneId));
       const colorRate = 1 - Math.exp(-dt / PALETTE_TAU);
 
       // Trees: darkest — 0.22× the cool palette. Reads as near-silhouette.

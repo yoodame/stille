@@ -2,7 +2,7 @@ import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { SceneState } from '../audio/useAudioEngine';
-import { SCENE_BY_ID, tintForTimeOfDay } from '../audio/scenes';
+import { SCENE_BY_ID, paletteFor, tintForTimeOfDay } from '../audio/scenes';
 import { backgroundFragmentShader, backgroundVertexShader } from './shaders';
 
 type Props = {
@@ -58,7 +58,7 @@ export function Background({ trebleRef, stateRef }: Props) {
     const darknessRate = 1 - Math.exp(-dt / 1.2);
     u.uSkyDarkness.value += (targetDarkness - u.uSkyDarkness.value) * darknessRate;
 
-    const pal = tintForTimeOfDay(SCENE_BY_ID[stateRef.current.sceneId].palette);
+    const pal = tintForTimeOfDay(paletteFor(stateRef.current.sceneId));
     const palRate = 1 - Math.exp(-dt * 0.7);
     (u.uWarm.value as THREE.Vector3).lerp(tmp.set(...pal.warm), palRate);
     (u.uCool.value as THREE.Vector3).lerp(tmp.set(...pal.cool), palRate);
