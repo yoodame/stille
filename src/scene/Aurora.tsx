@@ -87,7 +87,9 @@ const auroraFragment = /* glsl */ `
     r1 = pow(r1, 6.0);
     float r2 = vnoise(vec2((vUv.x + vUv.y * slant * 1.4) * 55.0 + t * 1.6, t * 0.6 + 7.0));
     r2 = pow(r2, 7.0);
-    float rayMask = smoothstep(0.4, 0.85, fbm(vec2(vUv.x * 1.6 - t * 0.3, t * 0.2)));
+    // rayMask is effectively 1D (x + time); a single vnoise reads identical
+    // at this spatial scale and skips 3 of fbm()'s 4 octaves.
+    float rayMask = smoothstep(0.4, 0.85, vnoise(vec2(vUv.x * 1.6 - t * 0.3, t * 0.2)));
     float rays = (r1 + r2 * 0.7) * rayMask * band;
 
     float intensity = ribbon + rays * 0.85;

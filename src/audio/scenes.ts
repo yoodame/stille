@@ -158,13 +158,9 @@ export const SCENE_BY_ID: Record<SceneId, Scene> = Object.fromEntries(
   SCENES.map((s) => [s.id, s]),
 ) as Record<SceneId, Scene>;
 
-/**
- * Defensive palette lookup — returns the scene's palette, falling back to
- * Drift if the id is somehow stale or invalid. Prevents the entire render
- * loop from throwing on a transient bad sceneId.
- */
-export function paletteFor(id: SceneId | string): Palette {
-  return SCENE_BY_ID[id as SceneId]?.palette ?? SCENE_BY_ID.drift.palette;
+/** Palette lookup with a Drift fallback so a stale id can't crash render. */
+export function paletteFor(id: SceneId): Palette {
+  return SCENE_BY_ID[id]?.palette ?? SCENE_BY_ID.drift.palette;
 }
 
 /**
