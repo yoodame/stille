@@ -144,15 +144,14 @@
 .sceneOptionActive { opacity: 1; color: var(--warm); }
 .sceneOptionActive svg { opacity: 1; }
 
-/* Play sits anchored at viewport-center; the side buttons unfold to its
-   RIGHT. The hover hit-area is wider than the visible content. */
+/* The whole toolbar stays centered: when collapsed, only play is visible at
+   center; when hovered, the cluster widens but its midpoint remains anchored
+   so all four icons read as a balanced group. */
 .playArea {
   position: absolute;
   bottom: 36px;
   left: 50%;
-  /* Anchor: subtract play's half-width (30) + playArea's left padding (36)
-     so play.center ends up exactly at 50% of viewport. */
-  transform: translateX(-66px);
+  transform: translateX(-50%);
   padding: 22px 36px;
 }
 
