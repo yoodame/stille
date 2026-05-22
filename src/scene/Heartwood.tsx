@@ -160,11 +160,12 @@ export function Heartwood({ stateRef, trebleRef, visible }: Props) {
 
   return (
     <group ref={groupRef} renderOrder={-1} visible={false}>
-      {/* Glow plane sits between the tipi and camera; its centre lands
-          where the tipi tops converge. depthTest stays on so the orb
-          properly occludes the plane (no rectangle outline behind it). */}
-      <mesh position={[0, -1.3, -2.5]}>
-        <planeGeometry args={[6, 4]} />
+      {/* Glow plane is positioned so its bright CORE lands well below
+          the viewport — what reaches the screen is just the soft halo
+          washing UP from below, like firelight glowing from underneath
+          the visible frame. */}
+      <mesh position={[0, -4.2, -2.5]}>
+        <planeGeometry args={[10, 6]} />
         <shaderMaterial
           ref={glowMatRef}
           vertexShader={glowVertex}
