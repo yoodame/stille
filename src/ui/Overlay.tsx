@@ -222,6 +222,19 @@ export function Overlay({ audio }: Props) {
             <span className={styles.globalValue}>{audio.params.tempo} bpm</span>
           </div>
           <div className={styles.globalRow}>
+            <span className={styles.globalLabel}>reverb</span>
+            <input
+              className={styles.slider}
+              type="range"
+              min={RANGES['reverb.wet'].min}
+              max={RANGES['reverb.wet'].max}
+              step={RANGES['reverb.wet'].step}
+              value={audio.params.reverb.wet}
+              onChange={(e) => audio.setParam('reverb.wet', Number(e.target.value))}
+            />
+            <span className={styles.globalValue}>{Math.round(audio.params.reverb.wet * 100)}%</span>
+          </div>
+          <div className={styles.globalRow}>
             <button
               className={`${styles.driftBtn} ${audio.params.drift.enabled ? styles.driftOn : ''}`}
               onClick={() => audio.setParam('drift.enabled', !audio.params.drift.enabled)}

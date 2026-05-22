@@ -40,6 +40,7 @@ const DRUM_PATTERNS: Record<DrumKit, DrumPattern> = {
 export type Params = {
   tempo: number; // BPM, 40-120
   drift: { enabled: boolean; intervalSec: number };
+  reverb: { wet: number };
   binaural: { volume: number; carrierFreq: number; beatFreq: number };
   noise: { volume: number; pan: number; cutoff: number };
   pad: { volume: number; pan: number; root: number; brightness: number };
@@ -55,6 +56,7 @@ export type VoiceId = 'binaural' | 'noise' | 'pad' | 'bells' | 'drums' | 'pluck'
 export const DEFAULTS: Params = {
   tempo: 62,
   drift: { enabled: false, intervalSec: 120 },
+  reverb: { wet: 0.22 },
   binaural: { volume: 0.35, carrierFreq: 200, beatFreq: 8 },
   noise: { volume: 0.4, pan: 0, cutoff: 1400 },
   pad: { volume: 0.5, pan: 0, root: 0, brightness: 0.5 },
@@ -69,6 +71,7 @@ export const DEFAULTS: Params = {
 export const RANGES: Record<string, { min: number; max: number; step: number }> = {
   'tempo':           { min: 40,  max: 120, step: 1 },
   'drift.intervalSec': { min: 30, max: 180, step: 5 },
+  'reverb.wet':      { min: 0,   max: 1,   step: 0.01 },
   'binaural.volume':    { min: 0,    max: 1,    step: 0.01 },
   'binaural.carrierFreq': { min: 120, max: 300, step: 1 },
   'binaural.beatFreq':  { min: 4,    max: 14,   step: 0.1 },
@@ -204,7 +207,7 @@ export class AudioEngine {
     this.dryGain = this.ctx.createGain();
     this.dryGain.gain.value = 1.0;
     this.wetGain = this.ctx.createGain();
-    this.wetGain.gain.value = 0.22;
+    this.wetGain.gain.value = this.params.reverb.wet;
     this.convolver = this.ctx.createConvolver();
     this.convolver.buffer = this.createReverbImpulse();
 
@@ -484,7 +487,14 @@ export class AudioEngine {
       case 'drums': this.applyDrums(); break;
       case 'pluck': this.applyPluck(); break;
       case 'subBass': this.applySubBass(); break;
+      case 'reverb': this.applyReverb(); break;
     }
+  }
+
+  private applyReverb() {
+    const now = this.ctx.currentTime;
+    this.wetGain.gain.cancelScheduledValues(now);
+    this.wetGain.gain.linearRampToValueAtTime(this.params.reverb.wet, now + 0.15);
   }
 
   private applyBinaural() {
