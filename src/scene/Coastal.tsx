@@ -157,10 +157,11 @@ export function Coastal({ stateRef, trebleRef, visible }: Props) {
 
   return (
     <group ref={groupRef} renderOrder={-1} visible={false}>
-      {/* Wide plane sitting clearly below the orb. The water's bright
-          horizon line lands at world y ≈ -0.9 — well below the orb at
-          y=0, so the orb reads as a moon floating above the sea. */}
-      <mesh position={[0, -3.6, -8]}>
+      {/* Wide plane sitting low in the frame. The bright horizon line
+          lands well below the orb (≈ lower third of the viewport) so
+          the orb floats high in the sky with open air around it and
+          the water sits as a distinct strip near the bottom. */}
+      <mesh position={[0, -5.0, -8]}>
         <planeGeometry args={[28, 6]} />
         <shaderMaterial
           ref={seaMatRef}
