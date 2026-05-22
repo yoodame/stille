@@ -126,7 +126,9 @@ const mountainVertex = /* glsl */ `
   }
 `;
 
-// Jagged peaks via layered triangle-ish waves (saw-tooth-ish via abs(sin)).
+// Three ridges (back/mid/front) sculpted from 1D FBM value noise so the
+// peaks never repeat. Atmospheric haze lightens the back range and a faint
+// aurora "spill" tints the snow caps cool-green from the lights overhead.
 const mountainFragment = /* glsl */ `
   precision highp float;
   uniform vec3 uFrontColor;
@@ -135,34 +137,78 @@ const mountainFragment = /* glsl */ `
   uniform float uOpacity;
   varying vec2 vUv;
 
+  float hash1(float x) {
+    return fract(sin(x * 127.1) * 43758.5453);
+  }
+  // 1D value noise: smoothed lerp between hashed integers.
+  float n1d(float x) {
+    float i = floor(x);
+    float f = fract(x);
+    float u = f * f * (3.0 - 2.0 * f);
+    return mix(hash1(i), hash1(i + 1.0), u);
+  }
+  // 4-octave FBM — organic, non-repeating ridge profiles.
+  float fbm1(float x) {
+    float sum = 0.0;
+    float amp = 0.5;
+    float freq = 1.0;
+    for (int i = 0; i < 4; i++) {
+      sum += n1d(x * freq) * amp;
+      amp *= 0.5;
+      freq *= 2.0;
+    }
+    return sum;
+  }
+
   void main() {
-    // Back range — taller, lighter, smoother.
-    float hBack = 0.55
-      + 0.16 * abs(sin(vUv.x * 2.4 + 1.1))
-      + 0.06 * abs(sin(vUv.x * 6.0 + 2.8))
-      - 0.05;
-    float backMask = smoothstep(hBack + 0.002, hBack - 0.002, vUv.y);
+    // Back: low-frequency rolling, gentle and tall (distant, hazy).
+    float hBack  = 0.58 + 0.16 * fbm1(vUv.x * 1.5 + 7.3);
+    // Mid: medium frequency, in between.
+    float hMid   = 0.44 + 0.18 * fbm1(vUv.x * 2.4 + 17.1);
+    // Front: sharpest ridge with a touch of high-freq micro-detail (rocky).
+    float hFront = 0.28
+      + 0.18 * fbm1(vUv.x * 3.6 + 29.7)
+      + 0.035 * fbm1(vUv.x * 13.0 + 4.1);
 
-    // Front range — lower, darker, jaggier (sharp peaks).
-    float hFront = 0.34
-      + 0.18 * abs(sin(vUv.x * 3.5 + 0.4))
-      + 0.07 * abs(sin(vUv.x * 9.0 + 1.7))
-      + 0.03 * abs(sin(vUv.x * 21.0 + 3.1));
-    float frontMask = smoothstep(hFront + 0.002, hFront - 0.002, vUv.y);
+    // Antialiased silhouette masks (a tiny pixel-scale falloff at each ridge).
+    float backMask  = smoothstep(hBack  + 0.004, hBack  - 0.004, vUv.y);
+    float midMask   = smoothstep(hMid   + 0.004, hMid   - 0.004, vUv.y);
+    float frontMask = smoothstep(hFront + 0.004, hFront - 0.004, vUv.y);
 
-    float mask = max(backMask, frontMask);
-    if (mask * uOpacity < 0.005) discard;
+    float anyMask = max(max(backMask, midMask), frontMask);
+    if (anyMask * uOpacity < 0.005) discard;
 
-    // Snow cap: near the top of each peak, blend toward white.
-    float snowBack  = smoothstep(hBack - 0.06, hBack - 0.002, vUv.y) * backMask;
-    float snowFront = smoothstep(hFront - 0.06, hFront - 0.002, vUv.y) * frontMask;
-    float snowAmt   = max(snowBack, snowFront);
+    // Per-layer snow caps. Each is a narrow band just below its own ridge.
+    // Bands are wider on the back range (snow feels softer when distant).
+    float snowBack  = smoothstep(hBack  - 0.085, hBack  - 0.004, vUv.y) * backMask;
+    float snowMid   = smoothstep(hMid   - 0.065, hMid   - 0.004, vUv.y) * midMask;
+    float snowFront = smoothstep(hFront - 0.050, hFront - 0.004, vUv.y) * frontMask;
 
-    vec3 base = mix(uBackColor, uFrontColor, frontMask);
-    vec3 col = mix(base, uSnowColor, snowAmt * 0.65);
+    // Layered colors. Back gets atmospheric haze (pulled toward snow color)
+    // so it reads as far away; front stays dark and sharp.
+    vec3 hazedBack = mix(uBackColor, uSnowColor, 0.30);
+    vec3 midColor  = mix(uBackColor, uFrontColor, 0.55);
+    vec3 col = hazedBack;
+    col = mix(col, midColor,      midMask);
+    col = mix(col, uFrontColor,   frontMask);
+
+    // Apply snow. Distant snow is less saturated white (atmospheric).
+    vec3 snowBackCol  = mix(uSnowColor, hazedBack, 0.25);
+    vec3 snowMidCol   = mix(uSnowColor, midColor,  0.12);
+    vec3 snowFrontCol = uSnowColor;
+    col = mix(col, snowBackCol,  snowBack  * 0.55);
+    col = mix(col, snowMidCol,   snowMid   * 0.65);
+    col = mix(col, snowFrontCol, snowFront * 0.75);
+
+    // Aurora spillover — the snowy caps pick up a faint cool-green tint
+    // from the lights overhead. Strongest near the top of the frame.
+    vec3 auroraTint = vec3(0.45, 0.85, 0.70);
+    float spill = smoothstep(0.30, 0.75, vUv.y);
+    float snowAmt = max(max(snowBack, snowMid), snowFront);
+    col = mix(col, col * auroraTint * 1.7, snowAmt * spill * 0.18);
 
     float bottomFade = smoothstep(0.0, 0.18, vUv.y);
-    gl_FragColor = vec4(col, mask * uOpacity * bottomFade);
+    gl_FragColor = vec4(col, anyMask * uOpacity * bottomFade);
   }
 `;
 
