@@ -12,10 +12,14 @@ type Props = {
 };
 
 // ───── Sea surface ───────────────────────────────────────────────────
-// A horizontal plane in the lower half. Horizontal shimmer bands sample
-// from value-noise so the waves never repeat. A vertical reflection
-// streak sits directly below the centered orb — the "moonlight on water"
-// gesture that anchors the scene.
+// A horizontal plane filling the lower half of the frame. Distinct
+// reading:
+//   • A bright horizon line at the top edge of the water (where sea
+//     meets sky) — the strongest single anchor in the scene.
+//   • Horizontal shimmer bands tilted with perspective so the closer
+//     bands read wider; the bands ride drifting value-noise so the
+//     waves are never uniform.
+//   • A vertical moonlight streak directly under the centered orb.
 
 const seaVertex = /* glsl */ `
   varying vec2 vUv;
@@ -49,37 +53,44 @@ const seaFragment = /* glsl */ `
   }
 
   void main() {
-    float t = uTime * 0.15;
+    float t = uTime * 0.18;
 
-    // Top of the plane is the horizon — fade water in from there downward.
-    float horizonFade = smoothstep(0.95, 0.78, vUv.y);
+    // Body color: deep cool below, lighter cool near the horizon.
+    vec3 deep   = uCool * 0.5;
+    vec3 shallow = mix(uCool, uAccent, 0.45);
+    vec3 col = mix(deep, shallow, smoothstep(0.0, 0.95, vUv.y));
 
-    // Body color: deep sea at the bottom, lighter near the horizon.
-    vec3 deep = uCool * 0.55;
-    vec3 shallow = mix(uCool, uAccent, 0.35);
-    vec3 col = mix(deep, shallow, vUv.y);
+    // ── Horizon line — a bright thin band right at the top of the
+    // plane, where sea meets sky. This is the strongest anchor.
+    float horizon = smoothstep(0.04, 0.0, abs(vUv.y - 0.96));
+    col = mix(col, mix(uAccent, uWarm, 0.4), horizon * 0.85);
 
-    // Shimmer bands — narrow horizontal stripes whose brightness is
-    // modulated by drifting value-noise so the waves are never even.
-    float bandY = vUv.y * 28.0 - t * 0.6;
+    // ── Shimmer bands. Bands get denser/finer toward the horizon for
+    // perspective. Each band's brightness is gated by drifting noise so
+    // the wave field looks irregular.
+    float perspective = mix(8.0, 36.0, vUv.y); // few bands near, many near horizon
+    float bandY = vUv.y * perspective - t * 0.7;
     float bands = sin(bandY) * 0.5 + 0.5;
-    bands = pow(bands, 4.0);
-    float shimmerMask = vnoise(vec2(vUv.x * 3.0 - t * 0.3, vUv.y * 6.0 + t * 0.4));
-    float shimmer = bands * smoothstep(0.35, 0.85, shimmerMask);
+    bands = pow(bands, 3.0);
+    float wave = vnoise(vec2(vUv.x * 4.0 - t * 0.4, vUv.y * 5.0 + t * 0.3));
+    float shimmer = bands * smoothstep(0.25, 0.80, wave);
 
-    // Brightening near the horizon (shallow water catches more sky light).
-    shimmer *= 0.4 + 0.8 * vUv.y;
+    // Brighten shimmer as we approach the horizon (catches more sky).
+    shimmer *= 0.5 + 0.9 * vUv.y;
+    col += mix(uAccent, uWarm, 0.2) * shimmer * 0.85;
 
-    col += uAccent * shimmer * 0.55;
-
-    // Moonlight streak under the orb — a soft vertical glow column at the
-    // center of the plane, broken up by the same wave noise so it shimmers.
+    // ── Moonlight streak below the orb (centered horizontally).
     float beamX = abs(vUv.x - 0.5);
-    float beam = exp(-beamX * 14.0) * smoothstep(0.30, 0.95, vUv.y);
-    beam *= 0.55 + 0.45 * vnoise(vec2(vUv.x * 12.0, vUv.y * 8.0 - t * 1.2));
-    col += mix(uAccent, uWarm, 0.3) * beam * 0.55;
+    float beamFalloff = exp(-beamX * 11.0);
+    float beam = beamFalloff * smoothstep(0.05, 0.85, vUv.y);
+    beam *= 0.45 + 0.55 * vnoise(vec2(vUv.x * 14.0, vUv.y * 9.0 - t * 1.5));
+    col += mix(uWarm, uAccent, 0.5) * beam * 0.9;
 
-    float alpha = horizonFade * uOpacity;
+    // The plane fades out at its very top edge so the horizon never
+    // shows a hard line above where the band sits.
+    float topFade = 1.0 - smoothstep(0.98, 1.0, vUv.y);
+
+    float alpha = uOpacity * topFade;
     if (alpha < 0.004) discard;
     gl_FragColor = vec4(col, alpha);
   }
@@ -113,7 +124,6 @@ export function Coastal({ stateRef, trebleRef, visible }: Props) {
 
     if (seaMatRef.current) {
       seaMatRef.current.uniforms.uTime.value += dt;
-      // Treble sharpens the shimmer — wind on the water reads as treble.
       const trebleBoost = 1 + trebleRef.current * 0.20;
       seaMatRef.current.uniforms.uOpacity.value = opacityRef.current * trebleBoost;
     }
@@ -141,9 +151,11 @@ export function Coastal({ stateRef, trebleRef, visible }: Props) {
 
   return (
     <group ref={groupRef} renderOrder={-1} visible={false}>
-      {/* Water plane sits in the lower half. Top edge near the horizon line. */}
-      <mesh position={[0, -2.6, -10]}>
-        <planeGeometry args={[36, 7]} />
+      {/* Wide plane filling the lower half. Horizon (its top edge) sits
+          a touch below the orb so the orb reads as a moon on the
+          horizon line. */}
+      <mesh position={[0, -2.4, -8]}>
+        <planeGeometry args={[28, 6]} />
         <shaderMaterial
           ref={seaMatRef}
           vertexShader={seaVertex}

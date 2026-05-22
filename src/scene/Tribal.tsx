@@ -12,10 +12,10 @@ type Props = {
 };
 
 // ───── Mesas ─────────────────────────────────────────────────────────
-// Two layered silhouette ranges. The back range is gentle FBM (rolling
-// hills); the front range is the same FBM with heights quantized into
-// discrete plateaus — gives the iconic flat-topped mesa look. A faint
-// haze band sits along the horizon between sky and silhouette.
+// Two silhouette layers across the bottom quarter of the frame. The
+// back range is gentler / hazier; the front is a dark, hard-edged
+// mesa with flat plateau tops from quantized FBM. A faint warm horizon
+// line sits where the back range meets the sky.
 
 const mesaVertex = /* glsl */ `
   varying vec2 vUv;
@@ -55,32 +55,31 @@ const mesaFragment = /* glsl */ `
   }
 
   void main() {
-    // Back: smooth FBM — distant low hills.
-    float hBack = 0.36 + 0.10 * fbm1(vUv.x * 1.4 + 11.3);
+    // Back range: smooth low FBM — gentle distant hills, slightly above
+    // the front silhouette for atmospheric depth.
+    float hBack = 0.48 + 0.06 * fbm1(vUv.x * 1.6 + 11.3);
 
-    // Front: same idea but quantized into 5 discrete plateau heights for
-    // the mesa silhouette. Wider x-step makes each plateau a true table.
-    float raw = fbm1(vUv.x * 1.1 + 5.7);
-    float quantized = floor(raw * 5.0) / 5.0;
-    float hFront = 0.20 + 0.22 * quantized;
+    // Front range: 4-level quantized FBM — chunky stepped mesa tops.
+    float raw = fbm1(vUv.x * 0.9 + 5.7);
+    float quantized = floor(raw * 4.0) / 3.0; // 0, 0.33, 0.66, 1.0
+    float hFront = 0.30 + 0.20 * quantized;
 
+    // Sharp silhouette edges.
     float backMask  = smoothstep(hBack  + 0.004, hBack  - 0.004, vUv.y);
     float frontMask = smoothstep(hFront + 0.003, hFront - 0.003, vUv.y);
 
     float anyMask = max(backMask, frontMask);
     if (anyMask * uOpacity < 0.005) discard;
 
-    // Body color: back range gets atmospheric haze (mixed with the haze
-    // band color), front is sharper and darker.
-    vec3 hazedBack = mix(uBackColor, uHazeColor, 0.32);
+    vec3 hazedBack = mix(uBackColor, uHazeColor, 0.25);
     vec3 col = mix(hazedBack, uFrontColor, frontMask);
 
-    // Thin glow line just above each ridge — twilight light catching the
-    // tops. Narrow band right at the silhouette edge.
-    float rim = smoothstep(0.012, 0.0, abs(vUv.y - hFront));
-    col = mix(col, uHazeColor, rim * 0.35 * frontMask);
+    // Very thin warm rim catching the top edge of the back range — reads
+    // as a single line of dusk light, not a wide glow band.
+    float horizon = smoothstep(0.008, 0.0, abs(vUv.y - hBack));
+    col = mix(col, uHazeColor, horizon * 0.6 * backMask);
 
-    float bottomFade = smoothstep(0.0, 0.10, vUv.y);
+    float bottomFade = smoothstep(0.0, 0.06, vUv.y);
     gl_FragColor = vec4(col, anyMask * uOpacity * bottomFade);
   }
 `;
@@ -121,14 +120,14 @@ export function Tribal({ stateRef, trebleRef: _trebleRef, visible }: Props) {
       const rate = 1 - Math.exp(-dt / PALETTE_TAU);
 
       // Front: near-black mahogany.
-      tmpColor.setRGB(pal.cool[0] * 0.35, pal.cool[1] * 0.35, pal.cool[2] * 0.35);
+      tmpColor.setRGB(pal.cool[0] * 0.30, pal.cool[1] * 0.30, pal.cool[2] * 0.30);
       frontColor.lerp(tmpColor, rate);
 
       // Back: lighter mahogany for distance.
-      tmpColor.setRGB(pal.cool[0] * 0.65, pal.cool[1] * 0.65, pal.cool[2] * 0.65);
+      tmpColor.setRGB(pal.cool[0] * 0.60, pal.cool[1] * 0.60, pal.cool[2] * 0.60);
       backColor.lerp(tmpColor, rate);
 
-      // Haze: the warm sunset tone catching the mesa tops.
+      // Haze: warm sunset tone catching the silhouette tops.
       tmpColor.setRGB(pal.warm[0], pal.warm[1], pal.warm[2]);
       hazeColor.lerp(tmpColor, rate);
     }
@@ -136,8 +135,10 @@ export function Tribal({ stateRef, trebleRef: _trebleRef, visible }: Props) {
 
   return (
     <group ref={groupRef} renderOrder={-1} visible={false}>
-      <mesh position={[0, -1.6, -14]}>
-        <planeGeometry args={[36, 7]} />
+      {/* Sits low in the frame so the silhouettes occupy only the
+          bottom quarter. */}
+      <mesh position={[0, -3.0, -12]}>
+        <planeGeometry args={[30, 5]} />
         <shaderMaterial
           ref={mesaMatRef}
           vertexShader={mesaVertex}

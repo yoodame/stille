@@ -12,9 +12,8 @@ type Props = {
 };
 
 // ───── Fire glow ─────────────────────────────────────────────────────
-// A soft radial bloom anchored above the log pile, additively blended so
-// it tints the lower half of the screen warm. Flicker is irregular —
-// nested sines rather than a clean oscillator.
+// Strong radial bloom anchored above the tipi's base. Sits IN FRONT of
+// the orb in render order so the warm halo reads even against the orb.
 
 const glowVertex = /* glsl */ `
   varying vec2 vUv;
@@ -33,42 +32,56 @@ const glowFragment = /* glsl */ `
   varying vec2 vUv;
 
   void main() {
-    // Anchor a touch above the bottom-center, vertically stretched.
-    vec2 c = (vUv - vec2(0.5, 0.18)) * vec2(1.0, 1.4);
+    // Anchor at the centre of the plane — the plane itself is positioned
+    // so this point lands where the tipi tops converge. Squashed
+    // vertically so the bloom reads as fire glowing upward.
+    vec2 c = (vUv - vec2(0.5, 0.5)) * vec2(1.0, 1.5);
     float d = length(c);
 
-    // Soft exponential falloff.
-    float glow = exp(-d * 2.6);
+    // Bright hot core + softer outer halo.
+    float core = exp(-d * 5.0);
+    float halo = exp(-d * 1.5);
 
-    // Irregular flicker: two non-harmonic sines combined.
-    float flicker = 0.82 + 0.18 * sin(uTime * 3.7 + sin(uTime * 6.1) * 1.5);
+    // Two non-harmonic sines for irregular flicker.
+    float flicker = 0.75 + 0.25 * sin(uTime * 4.2 + sin(uTime * 6.7) * 1.8);
 
-    // Hot accent at the core, warm cast in the bloom.
-    vec3 col = mix(uWarm, uAccent, smoothstep(0.0, 0.45, glow));
+    // Warm-hot center (pulled away from white so it reads as fire, not
+    // a star flare) fading to the scene's warm tone in the halo.
+    vec3 hot = mix(uAccent, vec3(1.0, 0.78, 0.55), core * 0.8);
+    vec3 col = mix(uWarm, hot, smoothstep(0.0, 0.55, core + halo * 0.4));
 
-    float alpha = glow * uOpacity * flicker * 0.85;
+    float intensity = (core * 1.4 + halo * 0.9) * flicker;
+    float alpha = intensity * uOpacity;
     if (alpha < 0.004) discard;
 
-    gl_FragColor = vec4(col * (1.0 + glow * 0.6), alpha);
+    gl_FragColor = vec4(col * intensity, alpha);
   }
 `;
 
-// ───── Log pile ──────────────────────────────────────────────────────
-// Five thin cylinder silhouettes arranged in a tipi-ish stack. Rotations
-// are picked for visual rhythm; nothing about it is procedural.
+// ───── Tipi sticks ───────────────────────────────────────────────────
+// Four cylinders leaning in toward a shared top point above the fire's
+// hot core. Each stick is positioned so its TOP converges near (0, -1.1)
+// and its BOTTOM splays outward — the classic tipi/campfire-pile shape.
+// The two `lean.z`-rotated sticks splay left/right; the two `lean.x`-
+// rotated sticks splay front/back, giving a 3D bonfire silhouette.
+
 type LogDef = {
   pos: [number, number, number];
   rot: [number, number, number];
-  length: number;
-  radius: number;
 };
+const STICK_LENGTH = 1.7;
+const STICK_RADIUS = 0.07;
+const LEAN = 0.55; // ~31° tilt — splays bottoms wide enough to read as a pile
 
 const LOGS: LogDef[] = [
-  { pos: [-0.55, -2.05, -2.5], rot: [0, 0.0,  0.18], length: 1.9, radius: 0.10 },
-  { pos: [ 0.55, -2.05, -2.5], rot: [0, 0.0, -0.18], length: 1.9, radius: 0.10 },
-  { pos: [ 0.10, -1.85, -2.3], rot: [-0.4, 0.5,  0.0], length: 1.7, radius: 0.085 },
-  { pos: [-0.10, -1.85, -2.3], rot: [ 0.4, -0.5, 0.0], length: 1.7, radius: 0.085 },
-  { pos: [ 0.00, -1.65, -2.1], rot: [ 0.6, 0.0,  0.0], length: 1.5, radius: 0.075 },
+  // Left-leaning (top tilts right toward center, bottom splays left)
+  { pos: [-0.55, -2.05, -3.0], rot: [0, 0,  LEAN] },
+  // Right-leaning
+  { pos: [ 0.55, -2.05, -3.0], rot: [0, 0, -LEAN] },
+  // Back-leaning (top tilts toward camera, bottom away)
+  { pos: [ 0.00, -2.05, -3.55], rot: [-LEAN, 0, 0] },
+  // Front-leaning
+  { pos: [ 0.00, -2.05, -2.45], rot: [ LEAN, 0, 0] },
 ];
 
 export function Heartwood({ stateRef, trebleRef, visible }: Props) {
@@ -109,9 +122,9 @@ export function Heartwood({ stateRef, trebleRef, visible }: Props) {
     opacityRef.current += (target - opacityRef.current) * fadeRate;
 
     logMat.opacity = opacityRef.current;
+    logMat.visible = opacityRef.current > 0.005;
     if (glowMatRef.current) {
       glowMatRef.current.uniforms.uTime.value += dt;
-      // Treble adds extra brightness — high-freq voices stoke the flame.
       const trebleBoost = 1 + trebleRef.current * 0.30;
       glowMatRef.current.uniforms.uOpacity.value = opacityRef.current * trebleBoost;
     }
@@ -122,9 +135,9 @@ export function Heartwood({ stateRef, trebleRef, visible }: Props) {
       const pal = tintForTimeOfDay(paletteFor(stateRef.current.sceneId));
       const rate = 1 - Math.exp(-dt / PALETTE_TAU);
 
-      // Logs: very dark with a faint cool undertone so they don't look
+      // Logs: very dark with a faint cool undertone so they don't read
       // pitch-black against the warm glow.
-      tmpColor.setRGB(pal.cool[0] * 0.20, pal.cool[1] * 0.20, pal.cool[2] * 0.20);
+      tmpColor.setRGB(pal.cool[0] * 0.18, pal.cool[1] * 0.18, pal.cool[2] * 0.18);
       logMat.color.lerp(tmpColor, rate);
 
       if (glowMatRef.current) {
@@ -142,8 +155,11 @@ export function Heartwood({ stateRef, trebleRef, visible }: Props) {
 
   return (
     <group ref={groupRef} renderOrder={-1} visible={false}>
-      <mesh position={[0, -1.4, -3.2]}>
-        <planeGeometry args={[12, 7]} />
+      {/* Glow plane sits between the tipi and camera; its centre lands
+          where the tipi tops converge so the bloom reads as fire at the
+          peak of the pile. */}
+      <mesh position={[0, -1.3, -2.5]} renderOrder={2}>
+        <planeGeometry args={[6, 4]} />
         <shaderMaterial
           ref={glowMatRef}
           vertexShader={glowVertex}
@@ -151,13 +167,14 @@ export function Heartwood({ stateRef, trebleRef, visible }: Props) {
           uniforms={glowUniforms}
           transparent
           depthWrite={false}
+          depthTest={false}
           blending={THREE.AdditiveBlending}
         />
       </mesh>
 
       {LOGS.map((log, i) => (
         <mesh key={i} position={log.pos} rotation={log.rot} material={logMat}>
-          <cylinderGeometry args={[log.radius, log.radius, log.length, 8]} />
+          <cylinderGeometry args={[STICK_RADIUS, STICK_RADIUS, STICK_LENGTH, 8]} />
         </mesh>
       ))}
     </group>
